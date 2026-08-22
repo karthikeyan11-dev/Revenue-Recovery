@@ -55,8 +55,11 @@ format-frontend: ## Auto-format frontend with prettier
 format: format-backend format-frontend ## Auto-format all code (backend + frontend)
 	@echo "All code formatted successfully!"
 
-seed: ## Run the synthetic data generator stub
-	cd backend && ./venv/bin/python -m app.data.synthetic_generator
+seed: ## Populate database with synthetic transaction cohorts
+	cd backend && ./venv/bin/python -c "from app.db import SessionLocal; from app.data import SyntheticDataGenerator; db=SessionLocal(); SyntheticDataGenerator.populate_database(db, customer_count=100, transaction_count=400); db.close()"
+
+generate-sdk: ## Generate OpenAPI TypeScript SDK for frontend
+	cd frontend && npm run generate:sdk
 
 build-frontend: ## Build frontend static production bundle
 	cd frontend && npm run build

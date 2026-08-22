@@ -1,15 +1,9 @@
 import React from 'react';
 import { Activity, Shield, Database, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { healthApi } from '../api';
+import { useHealthQuery } from '../api';
 
 export const HealthStatusCard: React.FC = () => {
-  const { data, error, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['health'],
-    queryFn: healthApi.getHealth,
-    refetchInterval: 10000,
-    retry: 1,
-  });
+  const { data, error, isLoading, isFetching, refetch } = useHealthQuery();
 
 
   return (

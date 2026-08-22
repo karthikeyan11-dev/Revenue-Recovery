@@ -1,1 +1,3 @@
-"""Synthetic data generation and fixtures."""
+from app.data.synthetic_generator import SyntheticDataGenerator
+
+__all__ = ["SyntheticDataGenerator"]

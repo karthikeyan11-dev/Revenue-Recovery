@@ -1,13 +1,14 @@
 import logging
 import sys
 from contextlib import asynccontextmanager
-from typing import Any
 
 from fastapi import FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api import agents_router, cases_router, dashboard_router, run_router
 from app.config import settings
 from app.db import check_db_connection
+from app.schemas.system import HealthResponse, RootResponse
 
 
 # Structured Logging Setup
@@ -42,8 +43,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Autonomous, policy-governed AI Revenue Recovery Orchestrator backend API",
+    description="Autonomous, policy-governed AI Revenue Recovery Orchestrator backend REST API",
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
 # CORS Configuration
@@ -55,21 +59,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include Feature Routers
+app.include_router(cases_router)
+app.include_router(dashboard_router)
+app.include_router(agents_router)
+app.include_router(run_router)
 
-@app.get("/", tags=["General"])
-def root() -> dict[str, Any]:
+
+@app.get(
+    "/",
+    response_model=RootResponse,
+    tags=["System"],
+    summary="Root metadata endpoint",
+    operation_id="get_root",
+)
+def root() -> RootResponse:
     """Root metadata endpoint."""
-    return {
-        "name": settings.PROJECT_NAME,
-        "version": settings.VERSION,
-        "environment": settings.ENVIRONMENT,
-        "docs_url": "/docs",
-        "health_url": "/health",
-    }
+    return RootResponse(
+        name=settings.PROJECT_NAME,
+        version=settings.VERSION,
+        environment=settings.ENVIRONMENT,
+        docs_url="/docs",
+        health_url="/health",
+    )
 
 
-@app.get("/health", tags=["System"])
-def health_check(response: Response) -> dict[str, Any]:
+@app.get(
+    "/health",
+    response_model=HealthResponse,
+    tags=["System"],
+    summary="System health and database connectivity probe",
+    operation_id="get_health",
+)
+def health_check(response: Response) -> HealthResponse:
     """
     Health check endpoint verifying system status and database connectivity.
     """
@@ -78,17 +100,17 @@ def health_check(response: Response) -> dict[str, Any]:
     if not db_ok:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         logger.warning(f"Health check degraded: {db_message}")
-        return {
-            "status": "degraded",
-            "service": "online",
-            "database": "unreachable",
-            "error": db_message,
-            "version": settings.VERSION,
-        }
+        return HealthResponse(
+            status="degraded",
+            service="online",
+            database="unreachable",
+            version=settings.VERSION,
+            error=db_message,
+        )
 
-    return {
-        "status": "ok",
-        "service": "online",
-        "database": "connected",
-        "version": settings.VERSION,
-    }
+    return HealthResponse(
+        status="ok",
+        service="online",
+        database="connected",
+        version=settings.VERSION,
+    )

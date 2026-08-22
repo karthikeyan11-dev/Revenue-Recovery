@@ -40,6 +40,8 @@ lerna-debug.log*
 dist/
 dist-ssr/
 *.local
+openapi.json
+backend/openapi.json
 
 # Environment variables & secrets
 .env
