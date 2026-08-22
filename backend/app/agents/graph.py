@@ -4,7 +4,7 @@ from typing import Any, TypedDict
 from langgraph.graph import END, StateGraph
 
 from app.agents.customer_intelligence import CustomerIntelligenceAgent
-from app.agents.recovery_detective import RevenueDetectiveAgent
+from app.agents.revenue_detective import RevenueDetectiveAgent
 from app.agents.recovery_strategist import RecoveryStrategistAgent
 from app.executor.executor import ActionExecutor
 from app.models.payment_failure import PaymentFailure
