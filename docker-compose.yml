@@ -32,20 +32,11 @@ services:
       dockerfile: Dockerfile
     container_name: revenue_recovery_backend
     restart: unless-stopped
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-revenue_recovery}
-      LLM_PROVIDER: ${LLM_PROVIDER:-google}
-      MODEL: ${MODEL:-gemini-flash-latest}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
-      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
-      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000}
-      CHROMA_PERSIST_DIR: ${CHROMA_PERSIST_DIR:-/app/data/chroma_db}
+      CHROMA_PERSIST_DIR: /app/data/chroma_db
     ports:
       - "8000:8000"
     volumes:

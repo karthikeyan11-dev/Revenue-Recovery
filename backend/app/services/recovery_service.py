@@ -22,6 +22,7 @@ from app.schemas.cases import (
     RecoveryCaseDetail,
     RecoveryCaseSummary,
 )
+from app.schemas.promise import PromiseToPaySummary
 
 logger = logging.getLogger("app.services.recovery")
 
@@ -41,26 +42,56 @@ class RecoveryService:
         cases = self.recovery_repo.get_all_cases(limit=limit, offset=offset, status=status)
         counts = self.recovery_repo.count_cases_by_status()
 
-        summaries = [
-            RecoveryCaseSummary(
-                id=c.id,
-                customer_id=c.customer_id,
-                customer_name=c.customer.name if c.customer else "Unknown",
-                customer_email=c.customer.email if c.customer else "unknown@example.com",
-                customer_segment=c.customer.segment if c.customer else "REGULAR",
-                leak_type=(
-                    c.revenue_leak.leak_type if c.revenue_leak else LeakType.TRANSACTION_FAILURE
-                ),
-                leak_amount=c.revenue_leak.amount if c.revenue_leak else 0.0,
-                recoverability_score=c.revenue_leak.recoverability_score if c.revenue_leak else 0.5,
-                status=c.status,
-                recovered_amount=c.recovered_amount,
-                recovery_cost=c.recovery_cost,
-                created_at=c.created_at,
-                resolved_at=c.resolved_at,
+        summaries = []
+        for c in cases:
+            strat_log = next(
+                (log for log in c.audit_logs if log.agent == "Recovery Strategist"), None
             )
-            for c in cases
-        ]
+            precedent_count = (
+                strat_log.precedent_sample_size
+                if strat_log and strat_log.precedent_sample_size is not None
+                else 0
+            )
+
+            has_insufficient_escalation = any(
+                (
+                    act.policy_decision == PolicyDecision.ESCALATED
+                    and "precedent" in (act.policy_reasoning or "").lower()
+                )
+                for act in c.recovery_actions
+            ) or (
+                strat_log is not None
+                and strat_log.precedent_sample_size is not None
+                and strat_log.precedent_sample_size < 3
+            )
+
+            ptp = c.promises_to_pay[-1] if c.promises_to_pay else None
+            promise_status = ptp.status.value if ptp else None
+
+            summaries.append(
+                RecoveryCaseSummary(
+                    id=c.id,
+                    customer_id=c.customer_id,
+                    customer_name=c.customer.name if c.customer else "Unknown",
+                    customer_email=c.customer.email if c.customer else "unknown@example.com",
+                    customer_segment=c.customer.segment if c.customer else "REGULAR",
+                    leak_type=(
+                        c.revenue_leak.leak_type if c.revenue_leak else LeakType.TRANSACTION_FAILURE
+                    ),
+                    leak_amount=c.revenue_leak.amount if c.revenue_leak else 0.0,
+                    recoverability_score=(
+                        c.revenue_leak.recoverability_score if c.revenue_leak else 0.5
+                    ),
+                    status=c.status,
+                    recovered_amount=c.recovered_amount,
+                    recovery_cost=c.recovery_cost,
+                    has_sufficient_precedent=not has_insufficient_escalation,
+                    precedent_count=precedent_count,
+                    promise_status=promise_status,
+                    created_at=c.created_at,
+                    resolved_at=c.resolved_at,
+                )
+            )
 
         return CasesListResponse(
             items=summaries,
@@ -98,12 +129,62 @@ class RecoveryService:
                 output_summary=log.output_summary,
                 decision=log.decision,
                 confidence=log.confidence,
-                empirical_confidence=log.empirical_confidence or log.confidence,
+                empirical_confidence=(
+                    log.empirical_confidence
+                    if log.empirical_confidence is not None
+                    else log.confidence
+                ),
                 llm_stated_confidence=log.llm_stated_confidence,
                 precedent_sample_size=log.precedent_sample_size or 0,
                 timestamp=log.timestamp,
             )
             for log in case.audit_logs
+        ]
+
+        strat_log = next(
+            (log for log in case.audit_logs if log.agent == "Recovery Strategist"), None
+        )
+        precedent_count = (
+            strat_log.precedent_sample_size
+            if strat_log and strat_log.precedent_sample_size is not None
+            else 0
+        )
+
+        has_insufficient_escalation = any(
+            (
+                act.policy_decision == PolicyDecision.ESCALATED
+                and "precedent" in (act.policy_reasoning or "").lower()
+            )
+            for act in case.recovery_actions
+        ) or (
+            strat_log is not None
+            and strat_log.precedent_sample_size is not None
+            and strat_log.precedent_sample_size < 3
+        )
+
+        ptp = case.promises_to_pay[-1] if case.promises_to_pay else None
+        promise_status = ptp.status.value if ptp else None
+
+        promises = [
+            PromiseToPaySummary(
+                id=p.id,
+                case_id=p.case_id,
+                customer_id=case.customer_id,
+                customer_name=case.customer.name if case.customer else "Unknown",
+                customer_email=case.customer.email if case.customer else "unknown@example.com",
+                customer_segment=(
+                    case.customer.segment.value
+                    if case.customer and case.customer.segment
+                    else "REGULAR"
+                ),
+                committed_amount=p.committed_amount,
+                committed_date=p.committed_date,
+                status=p.status,
+                follow_up_count=p.follow_up_count,
+                created_at=p.created_at,
+                resolved_at=p.resolved_at,
+            )
+            for p in case.promises_to_pay
         ]
 
         return RecoveryCaseDetail(
@@ -122,10 +203,14 @@ class RecoveryService:
             status=case.status,
             recovered_amount=case.recovered_amount,
             recovery_cost=case.recovery_cost,
+            has_sufficient_precedent=not has_insufficient_escalation,
+            precedent_count=precedent_count,
+            promise_status=promise_status,
             created_at=case.created_at,
             resolved_at=case.resolved_at,
             actions=actions,
             timeline=timeline,
+            promises=promises,
         )
 
     def process_single_failure_pipeline(

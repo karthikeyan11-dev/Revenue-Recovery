@@ -11,6 +11,9 @@ import {
   Brain,
   Crosshair,
   ShieldCheck,
+  Database,
+  Gauge,
+  Sparkles,
 } from 'lucide-react';
 import { useAgentActivityQuery } from '../api/hooks/useAgentActivity';
 
@@ -113,15 +116,15 @@ export const AgentActivity: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time audit telemetry capturing every LLM prompt, deterministic policy check, and
-            simulator dispatch.
+            Real-time audit telemetry capturing empirical vs LLM confidence metrics, RAG precedent
+            counts, and deterministic policy outcomes.
           </p>
         </div>
 
         <div className="flex items-center space-x-3">
           <div className="text-xs text-slate-400 font-mono flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
             <Clock className="w-3.5 h-3.5 text-brand-400" />
-            <span>Auto-polling (3s)</span>
+            <span>Auto-polling (5s)</span>
           </div>
 
           <button
@@ -192,6 +195,19 @@ export const AgentActivity: React.FC = () => {
           filteredActivities.map((act) => {
             const isRejection = act.decision === 'REJECTED';
             const isEscalation = act.decision === 'ESCALATED';
+            const isAiAgent = [
+              'Revenue Detective',
+              'Customer Intelligence',
+              'Recovery Strategist',
+            ].includes(act.agent);
+
+            const empiricalConf =
+              act.empirical_confidence !== null && act.empirical_confidence !== undefined
+                ? act.empirical_confidence
+                : act.confidence;
+
+            const llmConf = act.llm_stated_confidence;
+            const precedentCount = act.precedent_sample_size || 0;
 
             return (
               <div
@@ -222,12 +238,58 @@ export const AgentActivity: React.FC = () => {
                 </div>
 
                 <div className="mt-3 space-y-2 text-xs">
+                  {/* Dual Confidence & Precedents Bar */}
+                  {isAiAgent && (
+                    <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/90">
+                      {/* Empirical Confidence */}
+                      <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                        <Gauge className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          Empirical Confidence:
+                        </span>
+                        <span className="font-mono font-bold text-emerald-400 text-xs">
+                          {(empiricalConf * 100).toFixed(1)}%
+                        </span>
+                      </div>
+
+                      {/* LLM Stated Confidence */}
+                      {llmConf !== null && llmConf !== undefined && (
+                        <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            LLM Stated Confidence:
+                          </span>
+                          <span className="font-mono font-bold text-purple-300 text-xs">
+                            {(llmConf * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Strategist Specific: Precedent Count */}
+                      {act.agent === 'Recovery Strategist' && (
+                        <div
+                          className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border ${
+                            precedentCount >= 3
+                              ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300'
+                              : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                          }`}
+                        >
+                          <Database className="w-3.5 h-3.5" />
+                          <span className="text-[11px] font-medium">Retrieved Precedents:</span>
+                          <span className="font-mono font-bold text-xs">n={precedentCount}</span>
+                          {precedentCount < 3 && (
+                            <span className="text-[10px] text-amber-400 font-semibold">
+                              (Insufficient &lt; 3)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-200 font-sans leading-relaxed">
-                    <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
-                      <span>Reasoning & Output</span>
-                      <span className="text-emerald-400 font-mono lowercase">
-                        {(act.confidence * 100).toFixed(0)}% confidence
-                      </span>
+                    <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                      Reasoning & Decision Output
                     </div>
                     <p className="text-sm font-medium text-slate-100">{act.output_summary}</p>
                   </div>

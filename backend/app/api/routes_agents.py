@@ -31,6 +31,11 @@ def get_agent_activity(
             output_summary=act.output_summary,
             decision=act.decision,
             confidence=act.confidence,
+            empirical_confidence=(
+                act.empirical_confidence if act.empirical_confidence is not None else act.confidence
+            ),
+            llm_stated_confidence=act.llm_stated_confidence,
+            precedent_sample_size=act.precedent_sample_size or 0,
             timestamp=act.timestamp,
         )
         for act in activities

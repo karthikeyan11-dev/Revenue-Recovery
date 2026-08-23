@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,8 +13,12 @@ from app.config import settings
 from app.db import Base, get_db
 from app.integrations.razorpay_client import RazorpayClient
 from app.main import app
-from app.models.payment_failure import FailureReason
-from app.models.recovery_case import RecoveryCase
+from app.models.customer import CommunicationChannel, Customer, CustomerSegment
+from app.models.payment_failure import FailureReason, PaymentFailure
+from app.models.promise_to_pay import PromiseStatus, PromiseToPay
+from app.models.recovery_case import CaseStatus, RecoveryCase
+from app.models.revenue_leak import LeakType, RevenueLeak
+from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
 from app.models.webhook_event import RazorpayWebhookEvent
 from app.rag.playbook import RecoveryPlaybookService
 
@@ -137,8 +142,26 @@ def test_razorpay_failure_reason_taxonomy_mapping():
     )
 
 
+def test_webhook_receiver_invalid_signature_rejected(client):
+    """Verify that an invalid HMAC signature is immediately rejected with HTTP 400."""
+    payload = {"event": "payment.failed", "id": "evt_invalid_sig"}
+    body_bytes = json.dumps(payload).encode("utf-8")
+
+    response = client.post(
+        "/webhooks/razorpay",
+        content=body_bytes,
+        headers={
+            "Content-Type": "application/json",
+            "X-Razorpay-Signature": "invalid_signature_digest_12345",
+            "X-Razorpay-Event-Id": "evt_invalid_sig",
+        },
+    )
+    assert response.status_code == 400
+    assert "Invalid webhook signature" in response.json()["detail"]
+
+
 def test_webhook_receiver_payment_failed_triggers_recovery_pipeline(client, test_db):
-    """Verify that posting a payment.failed webhook event creates a PaymentFailure and executes recovery pipeline."""
+    """Verify that posting payment.failed returns fast 200 accepted and executes recovery pipeline."""
     secret = settings.RAZORPAY_WEBHOOK_SECRET or "test_secret_for_unit_tests"
     payload = {
         "entity": "event",
@@ -184,22 +207,141 @@ def test_webhook_receiver_payment_failed_triggers_recovery_pipeline(client, test
 
     assert response.status_code == 200
     res_data = response.json()
-    assert res_data["status"] == "processed"
+    assert res_data["status"] == "accepted"
     assert res_data["event_type"] == "payment.failed"
-    assert res_data["case_id"] is not None
+    assert res_data["failure_id"] is not None
 
-    # Verify case and webhook records in database
-    case = test_db.query(RecoveryCase).filter(RecoveryCase.id == res_data["case_id"]).first()
-    assert case is not None
-    assert case.revenue_leak.amount == 3500.0
+    # Verify PaymentFailure persisted with forensics
+    failure = (
+        test_db.query(PaymentFailure).filter(PaymentFailure.id == res_data["failure_id"]).first()
+    )
+    assert failure is not None
+    assert failure.raw_error_reason == "insufficient_funds"
+    assert failure.razorpay_payment_id == "pay_test_failed_001"
 
+    # Verify Webhook Event persisted
     wh_event = (
         test_db.query(RazorpayWebhookEvent)
         .filter(RazorpayWebhookEvent.event_id == "evt_unit_test_001")
         .first()
     )
     assert wh_event is not None
-    assert wh_event.case_id == case.id
+
+
+def test_webhook_receiver_payment_captured_closes_active_case(client, test_db):
+    """Verify that posting payment.captured resolves an open/in_progress case and marks transaction SUCCESS."""
+    secret = settings.RAZORPAY_WEBHOOK_SECRET or "test_secret_for_unit_tests"
+
+    # 1. Setup Customer, Transaction, Failure, Leak, and Active Recovery Case with Promise
+    cust = Customer(
+        id="cust_captured_01",
+        name="Pooja Test",
+        email="pooja.test@example.com",
+        phone="+919845012345",
+        segment=CustomerSegment.LOYAL,
+        preferred_channel=CommunicationChannel.WHATSAPP,
+    )
+    test_db.add(cust)
+
+    tx = Transaction(
+        id="txn_captured_01",
+        customer_id=cust.id,
+        amount=4500.0,
+        currency="INR",
+        status=TransactionStatus.FAILED,
+        payment_method=PaymentMethod.CARD,
+        razorpay_order_id="order_captured_001",
+        created_at=datetime.utcnow(),
+    )
+    test_db.add(tx)
+
+    pf = PaymentFailure(
+        id="pf_captured_01",
+        transaction_id=tx.id,
+        failure_reason=FailureReason.AUTHENTICATION_FAILED,
+        raw_error_code="GATEWAY_ERROR",
+        raw_error_message="OTP failed",
+        attempt_number=1,
+        created_at=datetime.utcnow(),
+    )
+    test_db.add(pf)
+
+    leak = RevenueLeak(
+        id="leak_captured_01",
+        failure_id=pf.id,
+        leak_type=LeakType.TRANSACTION_FAILURE,
+        amount=4500.0,
+        confidence=0.90,
+        recoverability_score=0.85,
+    )
+    test_db.add(leak)
+
+    case = RecoveryCase(
+        id="case_captured_01",
+        leak_id=leak.id,
+        customer_id=cust.id,
+        status=CaseStatus.IN_PROGRESS,
+        recovered_amount=0.0,
+        created_at=datetime.utcnow(),
+    )
+    test_db.add(case)
+
+    promise = PromiseToPay(
+        id="ptp_captured_01",
+        case_id=case.id,
+        committed_amount=4500.0,
+        committed_date=datetime.utcnow(),
+        status=PromiseStatus.PENDING,
+        follow_up_count=0,
+        created_at=datetime.utcnow(),
+    )
+    test_db.add(promise)
+    test_db.commit()
+
+    # 2. Post payment.captured event
+    payload = {
+        "entity": "event",
+        "event": "payment.captured",
+        "id": "evt_captured_001",
+        "payload": {
+            "payment": {
+                "entity": {
+                    "id": "pay_captured_001",
+                    "amount": 450000,
+                    "status": "captured",
+                    "order_id": "order_captured_001",
+                }
+            }
+        },
+    }
+
+    body_bytes = json.dumps(payload).encode("utf-8")
+    signature = hmac.new(secret.encode("utf-8"), body_bytes, hashlib.sha256).hexdigest()
+
+    response = client.post(
+        "/webhooks/razorpay",
+        content=body_bytes,
+        headers={
+            "Content-Type": "application/json",
+            "X-Razorpay-Signature": signature,
+            "X-Razorpay-Event-Id": "evt_captured_001",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "processed"
+
+    # 3. Assert Database state: Transaction is SUCCESS, Case is RECOVERED, Promise is KEPT
+    test_db.refresh(tx)
+    test_db.refresh(case)
+    test_db.refresh(promise)
+
+    assert tx.status == TransactionStatus.SUCCESS
+    assert case.status == CaseStatus.RECOVERED
+    assert case.recovered_amount == 4500.0
+    assert case.resolved_at is not None
+    assert promise.status == PromiseStatus.KEPT
+    assert promise.resolved_at is not None
 
 
 def test_webhook_receiver_idempotency(client, test_db):

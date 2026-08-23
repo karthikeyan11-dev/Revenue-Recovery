@@ -17,6 +17,9 @@ export type RecoveryCaseSummary = {
     status: CaseStatus;
     recovered_amount: number;
     recovery_cost: number;
+    has_sufficient_precedent?: boolean;
+    precedent_count?: number;
+    promise_status?: (string | null);
     created_at: string;
     resolved_at?: (string | null);
 };

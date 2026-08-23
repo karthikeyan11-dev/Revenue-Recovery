@@ -23,6 +23,7 @@ export class SystemService {
     /**
      * System health and database connectivity probe
      * Health check endpoint verifying system status and database connectivity.
+     * Returns 200 with component statuses (service=online, database=connected/unreachable).
      * @returns HealthResponse Successful Response
      * @throws ApiError
      */
