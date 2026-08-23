@@ -14,6 +14,9 @@ class AgentActivityItem(BaseModel):
     output_summary: str
     decision: str | None = None
     confidence: float
+    empirical_confidence: float | None = None
+    llm_stated_confidence: float | None = None
+    precedent_sample_size: int | None = 0
     timestamp: datetime
 
 

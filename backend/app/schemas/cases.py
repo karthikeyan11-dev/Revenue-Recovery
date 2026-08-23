@@ -6,6 +6,7 @@ from app.models.customer import CustomerSegment
 from app.models.recovery_action import ActionOutcome, ActionType, PolicyDecision
 from app.models.recovery_case import CaseStatus
 from app.models.revenue_leak import LeakType
+from app.schemas.promise import PromiseToPaySummary
 
 
 class CaseActionItem(BaseModel):
@@ -44,6 +45,9 @@ class RecoveryCaseSummary(BaseModel):
     status: CaseStatus
     recovered_amount: float
     recovery_cost: float
+    has_sufficient_precedent: bool = True
+    precedent_count: int = 0
+    promise_status: str | None = None
     created_at: datetime
     resolved_at: datetime | None = None
 
@@ -51,6 +55,7 @@ class RecoveryCaseSummary(BaseModel):
 class RecoveryCaseDetail(RecoveryCaseSummary):
     actions: list[CaseActionItem] = []
     timeline: list[CaseTimelineItem] = []
+    promises: list[PromiseToPaySummary] = []
 
 
 class CasesListResponse(BaseModel):

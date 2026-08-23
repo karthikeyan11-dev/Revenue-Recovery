@@ -14,6 +14,9 @@ export type AgentActivityItem = {
     output_summary: string;
     decision?: (string | null);
     confidence: number;
+    empirical_confidence?: (number | null);
+    llm_stated_confidence?: (number | null);
+    precedent_sample_size?: (number | null);
     timestamp: string;
 };
 

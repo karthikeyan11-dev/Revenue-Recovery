@@ -11,9 +11,10 @@ from app.api import (
     dashboard_router,
     promises_router,
     run_router,
+    webhooks_router,
 )
 from app.config import settings
-from app.db import check_db_connection
+from app.db import Base, check_db_connection, engine
 from app.schemas.system import HealthResponse, RootResponse
 
 
@@ -42,6 +43,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION} [{settings.ENVIRONMENT}]")
     logger.info(f"Configured LLM Provider: {settings.LLM_PROVIDER} | Model: {settings.MODEL}")
     settings.validate_llm_config()
+    Base.metadata.create_all(bind=engine)
     yield
     logger.info("Shutting down Application...")
 
@@ -71,6 +73,7 @@ app.include_router(dashboard_router)
 app.include_router(agents_router)
 app.include_router(run_router)
 app.include_router(promises_router)
+app.include_router(webhooks_router)
 
 
 @app.get(

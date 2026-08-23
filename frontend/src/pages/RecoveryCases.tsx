@@ -11,6 +11,9 @@ import {
   User,
   Zap,
   Activity,
+  Database,
+  Calendar,
+  Layers,
 } from 'lucide-react';
 import { useCasesQuery, useCaseDetailQuery } from '../api/hooks/useCases';
 import type { CaseStatus } from '../api/generated';
@@ -73,6 +76,49 @@ export const RecoveryCases: React.FC = () => {
     }
   };
 
+  const getPrecedentBadge = (hasSufficient?: boolean, count?: number) => {
+    if (hasSufficient === false) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+          <AlertTriangle className="w-3 h-3 mr-1 text-amber-400" />
+          Insufficient (n={count || 0})
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+        <Database className="w-3 h-3 mr-1 text-emerald-400" />
+        Sufficient (n={count || 3})
+      </span>
+    );
+  };
+
+  const getPromiseBadge = (status?: string | null) => {
+    if (!status) {
+      return <span className="text-slate-600 font-mono text-[11px]">—</span>;
+    }
+    switch (status) {
+      case 'KEPT':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <CheckCircle className="w-3 h-3 mr-1" /> Kept
+          </span>
+        );
+      case 'BROKEN':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+            <XCircle className="w-3 h-3 mr-1" /> Broken
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <Clock className="w-3 h-3 mr-1" /> Pending
+          </span>
+        );
+    }
+  };
+
   const getSegmentBadge = (segment: string) => {
     const colors: Record<string, string> = {
       HIGH_VALUE: 'bg-purple-500/10 text-purple-300 border-purple-500/30',
@@ -100,8 +146,8 @@ export const RecoveryCases: React.FC = () => {
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">Recovery Cases Management</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Browse payment failure events, examine AI recommendations, and inspect policy gate
-            decisions.
+            Browse payment failure events, examine empirical precedent grounds, inspect policy
+            gates, and monitor promises-to-pay.
           </p>
         </div>
 
@@ -149,8 +195,9 @@ export const RecoveryCases: React.FC = () => {
                 <th className="px-5 py-4">Customer</th>
                 <th className="px-5 py-4">Segment</th>
                 <th className="px-5 py-4">At Risk</th>
-                <th className="px-5 py-4">Recoverability</th>
+                <th className="px-5 py-4">Precedent</th>
                 <th className="px-5 py-4">Status</th>
+                <th className="px-5 py-4">Promise-to-Pay</th>
                 <th className="px-5 py-4">Recovered ₹</th>
                 <th className="px-5 py-4 text-right">Action</th>
               </tr>
@@ -158,14 +205,14 @@ export const RecoveryCases: React.FC = () => {
             <tbody className="divide-y divide-slate-800/60">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-12 text-center text-slate-500">
+                  <td colSpan={9} className="px-5 py-12 text-center text-slate-500">
                     <Activity className="w-6 h-6 animate-spin mx-auto mb-2 text-brand-400" />
                     Loading cases from database...
                   </td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-12 text-center text-slate-500">
+                  <td colSpan={9} className="px-5 py-12 text-center text-slate-500">
                     No recovery cases found matching your filters.
                   </td>
                 </tr>
@@ -188,19 +235,10 @@ export const RecoveryCases: React.FC = () => {
                       ₹{c.leak_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-5 py-4">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-16 h-2 rounded-full bg-slate-800 overflow-hidden">
-                          <div
-                            className="h-full bg-brand-500 rounded-full"
-                            style={{ width: `${c.recoverability_score * 100}%` }}
-                          ></div>
-                        </div>
-                        <span className="font-mono text-[11px] text-slate-300">
-                          {(c.recoverability_score * 100).toFixed(0)}%
-                        </span>
-                      </div>
+                      {getPrecedentBadge(c.has_sufficient_precedent, c.precedent_count)}
                     </td>
                     <td className="px-5 py-4">{getStatusBadge(c.status)}</td>
+                    <td className="px-5 py-4">{getPromiseBadge(c.promise_status)}</td>
                     <td className="px-5 py-4 font-bold text-emerald-400">
                       {c.recovered_amount > 0
                         ? `₹${c.recovered_amount.toLocaleString('en-IN', {
@@ -282,10 +320,13 @@ export const RecoveryCases: React.FC = () => {
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block">Recoverability</span>
-                        <span className="font-bold text-brand-300">
-                          {(caseDetail.recoverability_score * 100).toFixed(0)}%
-                        </span>
+                        <span className="text-slate-500 block">Precedent Grounding</span>
+                        <div className="mt-0.5">
+                          {getPrecedentBadge(
+                            caseDetail.has_sufficient_precedent,
+                            caseDetail.precedent_count
+                          )}
+                        </div>
                       </div>
                       <div>
                         <span className="text-slate-500 block">Recovered Amount</span>
@@ -294,6 +335,77 @@ export const RecoveryCases: React.FC = () => {
                         </span>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Promise-to-Pay Tracker Section */}
+                  <div className="p-5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                      <div className="flex items-center space-x-2 text-cyan-400 font-bold text-xs uppercase tracking-wider">
+                        <Calendar className="w-4 h-4" />
+                        <span>Promise-to-Pay Commitment Tracking</span>
+                      </div>
+                      {caseDetail.promises && caseDetail.promises.length > 0 && (
+                        <span className="text-[11px] font-mono text-slate-400">
+                          {caseDetail.promises.length} Commitment(s)
+                        </span>
+                      )}
+                    </div>
+
+                    {caseDetail.promises && caseDetail.promises.length > 0 ? (
+                      <div className="space-y-3">
+                        {caseDetail.promises.map((p) => (
+                          <div
+                            key={p.id}
+                            className="p-3.5 rounded-lg bg-slate-800/70 border border-slate-700/70 space-y-2"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-xs font-bold text-cyan-300">
+                                {p.id}
+                              </span>
+                              {getPromiseBadge(p.status)}
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-xs pt-1">
+                              <div>
+                                <span className="text-slate-500 block text-[11px]">
+                                  Committed Amount
+                                </span>
+                                <span className="font-bold text-white">
+                                  ₹{p.committed_amount.toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 block text-[11px]">Due Target</span>
+                                <span className="font-medium text-slate-300">
+                                  {new Date(p.committed_date).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 block text-[11px]">
+                                  Follow-up Count
+                                </span>
+                                <span className="font-mono font-medium text-amber-300">
+                                  {p.follow_up_count} / 1 (max retry)
+                                </span>
+                              </div>
+                            </div>
+                            {p.status === 'BROKEN' && (p.follow_up_count ?? 0) >= 1 && (
+                              <div className="p-2 rounded bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-300">
+                                ⚠️ Promise broken after follow-up. Stopping rule triggered: Case
+                                escalated to human agent.
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-800 text-xs text-slate-400 flex items-center space-x-2">
+                        <Layers className="w-4 h-4 text-slate-500" />
+                        <span>
+                          No active payment commitment required for this case (direct gateway retry
+                          or non-interactive outreach).
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions & Policy Decision Box */}

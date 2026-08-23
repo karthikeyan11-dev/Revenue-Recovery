@@ -3,6 +3,7 @@ from app.api.routes_cases import router as cases_router
 from app.api.routes_dashboard import router as dashboard_router
 from app.api.routes_promises import router as promises_router
 from app.api.routes_run import router as run_router
+from app.api.routes_webhooks import router as webhooks_router
 
 __all__ = [
     "cases_router",
@@ -10,4 +11,5 @@ __all__ = [
     "agents_router",
     "run_router",
     "promises_router",
+    "webhooks_router",
 ]

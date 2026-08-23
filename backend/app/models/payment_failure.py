@@ -31,6 +31,10 @@ class PaymentFailure(Base):
     )
     raw_error_code = Column(String(64), nullable=True)
     raw_error_message = Column(Text, nullable=True)
+    raw_error_source = Column(String(64), nullable=True)
+    raw_error_step = Column(String(64), nullable=True)
+    raw_error_reason = Column(String(64), nullable=True)
+    razorpay_payment_id = Column(String(64), nullable=True, index=True)
     attempt_number = Column(Integer, default=1, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
