@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
 from app.api import (
     agents_router,
@@ -44,82 +43,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION} [{settings.ENVIRONMENT}]")
     logger.info(f"Configured LLM Provider: {settings.LLM_PROVIDER} | Model: {settings.MODEL}")
     settings.validate_llm_config()
-    try:
-        Base.metadata.create_all(bind=engine)
-        with engine.connect() as conn:
-            # Transaction columns
-            conn.execute(
-                text(
-                    "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(64)"
-                )
-            )
-            # PaymentFailure columns
-            conn.execute(
-                text(
-                    "ALTER TABLE payment_failures ADD COLUMN IF NOT EXISTS raw_error_source VARCHAR(64)"
-                )
-            )
-            conn.execute(
-                text(
-                    "ALTER TABLE payment_failures ADD COLUMN IF NOT EXISTS raw_error_step VARCHAR(64)"
-                )
-            )
-            conn.execute(
-                text(
-                    "ALTER TABLE payment_failures ADD COLUMN IF NOT EXISTS raw_error_reason VARCHAR(64)"
-                )
-            )
-            conn.execute(
-                text(
-                    "ALTER TABLE payment_failures ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(64)"
-                )
-            )
-            # AuditLog columns
-            conn.execute(
-                text("ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS empirical_confidence FLOAT")
-            )
-            conn.execute(
-                text("ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS llm_stated_confidence FLOAT")
-            )
-            conn.execute(
-                text(
-                    "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS precedent_sample_size INTEGER"
-                )
-            )
-            # RecoveryCase columns
-            conn.execute(
-                text("ALTER TABLE recovery_cases ADD COLUMN IF NOT EXISTS precedent_count INTEGER")
-            )
-            conn.execute(
-                text(
-                    "ALTER TABLE recovery_cases ADD COLUMN IF NOT EXISTS empirical_confidence FLOAT"
-                )
-            )
-            conn.execute(
-                text(
-                    "ALTER TABLE recovery_cases ADD COLUMN IF NOT EXISTS playbook_precedents_json TEXT"
-                )
-            )
-            # RecoveryAction columns
-            conn.execute(
-                text(
-                    "ALTER TABLE recovery_actions ADD COLUMN IF NOT EXISTS empirical_confidence FLOAT"
-                )
-            )
-            conn.execute(
-                text(
-                    "ALTER TABLE recovery_actions ADD COLUMN IF NOT EXISTS llm_stated_confidence FLOAT"
-                )
-            )
-            conn.execute(
-                text(
-                    "ALTER TABLE recovery_actions ADD COLUMN IF NOT EXISTS precedent_sample_size INTEGER"
-                )
-            )
-            conn.commit()
-        logger.info("Database schemas and all columns verified and synchronized.")
-    except Exception as e:
-        logger.warning(f"Database schema sync warning: {e}")
+    Base.metadata.create_all(bind=engine)
     yield
     logger.info("Shutting down Application...")
 
