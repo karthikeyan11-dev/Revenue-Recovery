@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.integrations.razorpay_client import RazorpayClient
 from app.models.customer import CommunicationChannel, Customer, CustomerSegment
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
@@ -140,6 +141,7 @@ class SyntheticDataGenerator:
         customers: list[Customer],
         total_count: int = 500,
         failure_rate: float = 0.25,
+        real_razorpay_orders_count: int = 0,
     ) -> tuple[list[Transaction], list[PaymentFailure]]:
         transactions = []
         failures = []
@@ -154,8 +156,9 @@ class SyntheticDataGenerator:
         ]
 
         now = datetime.utcnow()
+        rzp_client = RazorpayClient()
 
-        for _ in range(total_count):
+        for idx in range(total_count):
             customer = random.choice(customers)
 
             # Amount distribution skewed towards typical orders with some high value
@@ -179,6 +182,21 @@ class SyntheticDataGenerator:
                 minutes=random.randint(0, 59),
             )
 
+            # Call real Orders API for hero subset if configured, otherwise format authentic order id
+            if idx < real_razorpay_orders_count and rzp_client.is_configured:
+                try:
+                    rzp_order = rzp_client.create_order(
+                        amount_rupees=round(amount, 2),
+                        receipt=f"rcpt_hero_{idx+1}",
+                        notes={"customer_id": customer.id, "segment": customer.segment.value},
+                    )
+                    order_id = rzp_order.get("id", f"order_{uuid.uuid4().hex[:14]}")
+                except Exception as e:
+                    logger.warning(f"Failed to create live Razorpay order for hero tx #{idx}: {e}")
+                    order_id = f"order_{uuid.uuid4().hex[:14]}"
+            else:
+                order_id = f"order_{uuid.uuid4().hex[:14]}"
+
             tx = Transaction(
                 id=f"txn_{uuid.uuid4().hex[:14]}",
                 customer_id=customer.id,
@@ -190,6 +208,7 @@ class SyntheticDataGenerator:
                     weights=[0.55, 0.35, 0.10],
                 )[0],
                 checkout_session_id=f"cs_{uuid.uuid4().hex[:16]}",
+                razorpay_order_id=order_id,
                 created_at=created_time,
             )
             transactions.append(tx)
@@ -211,6 +230,10 @@ class SyntheticDataGenerator:
                     failure_reason=reason,
                     raw_error_code=f"ERR_{reason.value[:8]}",
                     raw_error_message=f"Issuer response: {reason.value.replace('_', ' ')}",
+                    raw_error_source="issuer",
+                    raw_error_step="payment_authorization",
+                    raw_error_reason=reason.value.lower(),
+                    razorpay_payment_id=f"pay_{uuid.uuid4().hex[:14]}",
                     attempt_number=random.choices([1, 2, 3, 4], weights=[0.72, 0.18, 0.07, 0.03])[
                         0
                     ],
@@ -227,6 +250,7 @@ class SyntheticDataGenerator:
         customer_count: int = 150,
         transaction_count: int = 500,
         failure_rate: float = 0.25,
+        real_razorpay_orders_count: int = 0,
     ) -> dict:
         cust_repo = CustomerRepository(db)
         txn_repo = TransactionRepository(db)
@@ -237,7 +261,10 @@ class SyntheticDataGenerator:
         cust_repo.bulk_create(customers)
 
         transactions, failures = cls.generate_transactions(
-            customers, total_count=transaction_count, failure_rate=failure_rate
+            customers,
+            total_count=transaction_count,
+            failure_rate=failure_rate,
+            real_razorpay_orders_count=real_razorpay_orders_count,
         )
         txn_repo.bulk_create(transactions)
         txn_repo.bulk_create_failures(failures)

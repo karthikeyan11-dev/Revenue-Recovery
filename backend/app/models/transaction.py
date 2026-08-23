@@ -42,6 +42,7 @@ class Transaction(Base):
         nullable=False,
     )
     checkout_session_id = Column(String(128), nullable=True)
+    razorpay_order_id = Column(String(64), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

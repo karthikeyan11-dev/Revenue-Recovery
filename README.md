@@ -63,17 +63,35 @@ An autonomous, policy-governed AI system that detects revenue at risk from faile
 ## 3. Key Capabilities & Verified Features
 
 - **Empirical Baseline vs AI Benchmark:** Live snapshot database persistence calculates exact ₹ recovered, recovery rates, and net ROI across customer cohorts without hardcoded numbers.
-- **Compiled LangGraph Multi-Agent Pipeline:** StateGraph manages state flow across `Revenue Detective` $\to$ `Customer Intelligence` $\to$ `Recovery Strategist` $\to$ `Policy Engine` $\to$ `Action Executor`.
-- **Hybrid AI Reasoning with Graceful Fallback:** Real Anthropic Claude LLM API calls generate natural-language rationale with automated contextual fallback when API credits are low.
-- **Strict Deterministic Policy Engine:** Hard rules cap retry attempts ($\le 3$), enforce discount limits ($\le 10\%$), and route high-value at-risk payments ($\ge ₹25,000$) to human escalation.
+- **Compiled LangGraph Multi-Agent Pipeline:** StateGraph manages state flow across `Revenue Detective` $\to$ `Customer Intelligence` $\to$ `Recovery Strategist` $\to$ `Policy Engine` $\to$ `Action Executor` $\to$ `Recovery Analyst`.
+- **RAG Recovery Playbook (ChromaDB):** Vector store precedent retrieval grounding the Recovery Strategist with empirical Laplace-smoothed confidence score calculation.
+- **Promise-to-Pay Tracker & Stopping Rules:** Bounded tracking for customer payment commitments with automatic follow-up and strict halting rules preventing infinite automated loops.
+- **Razorpay Test API Integration & Webhook Receiver:**
+  - **Tier 1 (Orders API):** Genuine Razorpay Order creation (`POST /v1/orders`) for transactions, recording authentic `order_...` IDs, with graceful offline degradation.
+  - **Tier 2 (Hero Checkout & Webhook Receiver):** Real test-mode checkout flow handling test VPAs (`success@razorpay`, `failure@razorpay`) and cryptographically verified (`HMAC-SHA256`) idempotent webhook receiver (`POST /webhooks/razorpay`) feeding directly into the recovery pipeline.
+  - **Dataset Composition:** 500–1,000 calibrated, reproducible synthetic records with a small hero subset backed by live Razorpay Test API orders and authentic error taxonomy.
+- **Hybrid AI Reasoning with Graceful Fallback:** Multi-provider support (Anthropic Claude, OpenAI, Google Gemini, and Mock) with automated contextual fallback.
+- **Strict Deterministic Policy Engine:** Hard rules cap retry attempts ($\le 3$), enforce discount limits ($\le 10\%$), route high-value at-risk payments ($\ge ₹25,000$) to human escalation, and block ungrounded proposals via `INSUFFICIENT_PRECEDENT_GATE`.
 - **Real-Time Interactive Frontend:**
   - **Dashboard:** One-click simulation triggers, 4 KPI cards, and Recharts segment comparisons.
-  - **Recovery Cases:** Searchable cases table with interactive slide-over drawer showing full 5-stage audit timelines.
-  - **Agent Activity:** Auto-refreshing 3-second live audit feed highlighting policy rejections and LLM reasoning.
+  - **Recovery Cases:** Searchable cases table with interactive slide-over drawer showing full 5-stage audit timelines and promise-to-pay statuses.
+  - **Agent Activity:** Auto-refreshing 3-second live audit feed highlighting policy rejections, Laplace empirical confidence, and LLM reasoning.
 
 ---
 
-## 4. Quick Start
+## 4. Razorpay Test Mode vs. Calibrated Simulation
+
+| Dimension | Live Razorpay Test Mode (Tier 1 & Tier 2) | Calibrated Simulation Dataset |
+| :--- | :--- | :--- |
+| **Order Creation** | Real `POST /v1/orders` API calls generating authentic `order_xxx` IDs. | Formatted authentic order identifiers for bulk cohort scale. |
+| **Checkout Flow** | Test UPI VPAs (`success@razorpay`, `failure@razorpay`) with 3DS simulation. | Statistical failure distributions calibrated to Indian e-commerce benchmarks. |
+| **Webhook Processing** | Idempotent `POST /webhooks/razorpay` with raw payload HMAC-SHA256 verification. | In-memory simulated event triggers for batch baseline benchmarks. |
+| **Error Forensics** | Authentic Razorpay fields (`error_code`, `error_source`, `error_step`, `error_reason`). | Normalized taxonomic mapping (`INSUFFICIENT_FUNDS`, `AUTHENTICATION_FAILED`, etc.). |
+| **Pipeline Trigger** | Validated webhook payload directly triggers autonomous LangGraph pipeline. | Synthetically generated failure triggers the identical LangGraph pipeline. |
+
+---
+
+## 5. Quick Start
 
 ### Option A: Run with Docker Compose (Recommended)
 
@@ -106,21 +124,25 @@ An autonomous, policy-governed AI system that detects revenue at risk from faile
 
 ---
 
-## 5. Live Demo Guide
+## 6. Live Demo Guide
 
 For a step-by-step 5-minute presentation script covering data generation, baseline comparison, AI recovery uplift, and policy engine demonstrations, refer to [docs/demo-script.md](docs/demo-script.md).
 
 ---
 
-## 6. Verification & Test Suite
+## 7. Verification & Test Suite
 
-Run the full backend test suite and verification traces:
+Run the full backend test suite (33 tests) and verification scripts:
 ```bash
-# Run full unit & integration tests
+# Run full unit & integration test suite (33 passing tests)
 cd backend && venv/bin/pytest -v
 
-# Run verification traces
-venv/bin/python ../scratch/verify_phase1.py   # Baseline & Metrics Verification
-venv/bin/python ../scratch/verify_phase2.py   # LangGraph StateGraph Execution Trace
-venv/bin/python ../scratch/verify_phase3.py   # Hybrid LLM Reasoning & Fallback Trace
+# Run smoke test for Razorpay Test API
+venv/bin/python scripts/smoke_test_razorpay.py
+
+# Run Tier 2 Hero Checkout & Webhook Pipeline Simulation
+venv/bin/python scripts/razorpay_checkout_flow.py
+
+# Run Promise-to-Pay Tracker stopping rules trace
+venv/bin/python scripts/trace_promise_tracker.py
 ```

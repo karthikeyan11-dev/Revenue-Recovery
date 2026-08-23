@@ -8,6 +8,7 @@ from app.models.recovery_case import CaseStatus, RecoveryCase
 from app.models.recovery_metrics import RecoveryMetricsRecord, StrategyType
 from app.models.revenue_leak import LeakType, RevenueLeak
 from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
+from app.models.webhook_event import RazorpayWebhookEvent
 
 __all__ = [
     "Customer",
@@ -33,4 +34,5 @@ __all__ = [
     "StrategyType",
     "PromiseToPay",
     "PromiseStatus",
+    "RazorpayWebhookEvent",
 ]

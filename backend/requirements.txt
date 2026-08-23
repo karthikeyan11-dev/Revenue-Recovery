@@ -17,3 +17,4 @@ black==25.1.0
 alembic==1.14.1
 pre-commit==4.6.2
 chromadb==1.5.9
+playwright==1.62.0

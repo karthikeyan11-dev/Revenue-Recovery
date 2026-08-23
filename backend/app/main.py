@@ -11,6 +11,7 @@ from app.api import (
     dashboard_router,
     promises_router,
     run_router,
+    webhooks_router,
 )
 from app.config import settings
 from app.db import check_db_connection
@@ -71,6 +72,7 @@ app.include_router(dashboard_router)
 app.include_router(agents_router)
 app.include_router(run_router)
 app.include_router(promises_router)
+app.include_router(webhooks_router)
 
 
 @app.get(

@@ -55,6 +55,30 @@ class Settings(BaseSettings):
         description="API Key for Google Gemini models",
     )
 
+    # Razorpay Integration
+    RAZORPAY_KEY_ID: str = Field(
+        default="",
+        description="Razorpay API Key ID (e.g. rzp_test_...)",
+    )
+    RAZORPAY_KEY_SECRET: str = Field(
+        default="",
+        description="Razorpay API Key Secret",
+    )
+    RAZORPAY_WEBHOOK_SECRET: str = Field(
+        default="",
+        description="Razorpay Webhook Secret for signature verification",
+    )
+
+    @property
+    def is_razorpay_configured(self) -> bool:
+        """Returns True if both Razorpay Key ID and Secret are provided."""
+        return bool(
+            self.RAZORPAY_KEY_ID
+            and self.RAZORPAY_KEY_SECRET
+            and not self.RAZORPAY_KEY_ID.startswith("your_")
+            and not self.RAZORPAY_KEY_SECRET.startswith("your_")
+        )
+
     # CORS
     CORS_ORIGINS: str | list[str] = Field(
         default=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
