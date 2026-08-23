@@ -40,6 +40,8 @@ lerna-debug.log*
 dist/
 dist-ssr/
 *.local
+openapi.json
+backend/openapi.json
 
 # Environment variables & secrets
 .env
@@ -64,4 +66,8 @@ data/synthetic/*.csv
 *.sqlite
 *.sqlite3
 *.db
+*.bin
 pgdata/
+data/chroma_db/
+backend/data/chroma_db/
+backend/data/*.bin

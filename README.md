@@ -14,8 +14,6 @@ An autonomous, policy-governed AI system that detects revenue at risk from faile
 
 > **Key Architectural Principle:** The LLM proposes decisions. A deterministic policy engine and executor control what the system is actually allowed to do. The LLM is a reasoning layer, not an authority.
 
-For complete specification, detailed data schema, and development roadmap, see [projectplan.md](projectplan.md).
-
 ---
 
 ## 2. System Architecture
@@ -25,10 +23,10 @@ For complete specification, detailed data schema, and development roadmap, see [
                     │   React + Vite   │
                     │  Tailwind/Recharts│
                     └────────┬─────────┘
-                             │ REST
+                             │ REST API
                              ↓
                     ┌──────────────────┐
-                    │   FastAPI app    │
+                    │   FastAPI App    │
                     │ (single service) │
                     └────────┬─────────┘
                              │
@@ -41,12 +39,12 @@ For complete specification, detailed data schema, and development roadmap, see [
  Revenue Detective   Customer Intelligence   Recovery Strategist
        └─────────────────────┼─────────────────────┘
                              ↓
-                       Policy Engine
+                       Policy Engine (Deterministic Guard)
                     ┌────────┴────────┐
                     ↓                 ↓
                  APPROVE            BLOCK/ESCALATE
                     ↓                 ↓
-                 Executor        Human Queue (v2)
+                 Executor        Human Review Queue
        ┌────────────┼────────────┐
        ↓            ↓            ↓
     Payment      WhatsApp      Email
@@ -62,52 +60,44 @@ For complete specification, detailed data schema, and development roadmap, see [
 
 ---
 
-## 3. Tech Stack
+## 3. Key Capabilities & Verified Features
 
-- **Backend:** Python 3.11+, FastAPI, SQLAlchemy, Alembic, PostgreSQL, LangGraph, Pydantic v2, Anthropic API
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Recharts, TanStack Query
-- **Testing & Quality:** Pytest, HTTPX, Ruff, Black, ESLint, Prettier, GitHub Actions CI
-- **DevOps:** Docker, Docker Compose
+- **Empirical Baseline vs AI Benchmark:** Live snapshot database persistence calculates exact ₹ recovered, recovery rates, and net ROI across customer cohorts without hardcoded numbers.
+- **Compiled LangGraph Multi-Agent Pipeline:** StateGraph manages state flow across `Revenue Detective` $\to$ `Customer Intelligence` $\to$ `Recovery Strategist` $\to$ `Policy Engine` $\to$ `Action Executor`.
+- **Hybrid AI Reasoning with Graceful Fallback:** Real Anthropic Claude LLM API calls generate natural-language rationale with automated contextual fallback when API credits are low.
+- **Strict Deterministic Policy Engine:** Hard rules cap retry attempts ($\le 3$), enforce discount limits ($\le 10\%$), and route high-value at-risk payments ($\ge ₹25,000$) to human escalation.
+- **Real-Time Interactive Frontend:**
+  - **Dashboard:** One-click simulation triggers, 4 KPI cards, and Recharts segment comparisons.
+  - **Recovery Cases:** Searchable cases table with interactive slide-over drawer showing full 5-stage audit timelines.
+  - **Agent Activity:** Auto-refreshing 3-second live audit feed highlighting policy rejections and LLM reasoning.
 
 ---
 
 ## 4. Quick Start
 
-### Prerequisites
-- Docker & Docker Compose **OR** Python 3.11+ and Node.js 20+
-- Anthropic API key (for agent reasoning features)
-
 ### Option A: Run with Docker Compose (Recommended)
 
-1. Clone repository and copy environment configuration:
+1. Start services:
    ```bash
-   cp .env.example .env
-   # Edit .env and supply your ANTHROPIC_API_KEY
+   docker compose up -d --build
    ```
 
-2. Start the full stack (PostgreSQL + Backend + Frontend):
-   ```bash
-   make up
-   # or: docker compose up --build
-   ```
-
-3. Open services:
+2. Open services:
    - **Frontend UI:** [http://localhost:5173](http://localhost:5173) (or [http://localhost:3000](http://localhost:3000))
    - **Backend API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
    - **Health Endpoint:** [http://localhost:8000/health](http://localhost:8000/health)
 
-### Option B: Local Development (Without Docker)
+### Option B: Local Development
 
-1. **Backend setup:**
+1. **Backend Setup:**
    ```bash
    cd backend
-   python3 -m venv venv
    source venv/bin/activate
    pip install -r requirements.txt
    uvicorn app.main:app --reload --port 8000
    ```
 
-2. **Frontend setup:**
+2. **Frontend Setup:**
    ```bash
    cd frontend
    npm install
@@ -116,17 +106,21 @@ For complete specification, detailed data schema, and development roadmap, see [
 
 ---
 
-## 5. Developer Commands
+## 5. Live Demo Guide
 
-The project includes a root `Makefile` for streamlined development:
+For a step-by-step 5-minute presentation script covering data generation, baseline comparison, AI recovery uplift, and policy engine demonstrations, refer to [docs/demo-script.md](docs/demo-script.md).
 
-| Command | Description |
-|---|---|
-| `make up` | Start all services via Docker Compose |
-| `make down` | Stop and tear down Docker Compose services |
-| `make dev` | Run backend & frontend locally |
-| `make test` | Run backend unit & integration tests (`pytest`) |
-| `make lint` | Lint backend (`ruff`) and frontend (`eslint`) |
-| `make format` | Auto-format backend (`black`, `ruff`) and frontend (`prettier`) |
-| `make seed` | Generate synthetic dataset for recovery simulations |
-| `make build` | Build production artifacts for backend & frontend |
+---
+
+## 6. Verification & Test Suite
+
+Run the full backend test suite and verification traces:
+```bash
+# Run full unit & integration tests
+cd backend && venv/bin/pytest -v
+
+# Run verification traces
+venv/bin/python ../scratch/verify_phase1.py   # Baseline & Metrics Verification
+venv/bin/python ../scratch/verify_phase2.py   # LangGraph StateGraph Execution Trace
+venv/bin/python ../scratch/verify_phase3.py   # Hybrid LLM Reasoning & Fallback Trace
+```

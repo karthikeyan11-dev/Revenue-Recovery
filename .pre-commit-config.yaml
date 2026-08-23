@@ -1,0 +1,72 @@
+# ==============================================================================
+# AI Revenue Recovery Orchestrator — Pre-commit Configuration
+# Fast, automated quality, style, and security gates for backend and frontend.
+# ==============================================================================
+
+default_language_version:
+  python: python3
+
+repos:
+  # ----------------------------------------------------------------------------
+  # Generic File & Repository Hygiene
+  # ----------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^frontend/src/api/generated/
+      - id: end-of-file-fixer
+        exclude: ^frontend/src/api/generated/
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+        exclude: (tsconfig.*\.json|^frontend/tsconfig.*\.json)
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: detect-private-key
+
+  # ----------------------------------------------------------------------------
+  # Python / Backend: Ruff (Fast Linting & Auto-fix)
+  # ----------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.6
+    hooks:
+      - id: ruff
+        name: Ruff Linter (backend)
+        args: [--fix, --config, backend/pyproject.toml]
+        files: ^backend/
+
+  # ----------------------------------------------------------------------------
+  # Python / Backend: Black (Code Formatting)
+  # ----------------------------------------------------------------------------
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+        name: Black Formatter (backend)
+        args: [--config, backend/pyproject.toml]
+        files: ^backend/
+
+  # ----------------------------------------------------------------------------
+  # Frontend: Prettier (Code Formatting)
+  # ----------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        name: Prettier (frontend)
+        files: ^frontend/src/.*\.(ts|tsx|css|json)$
+        exclude: ^frontend/src/api/generated/
+
+  # ----------------------------------------------------------------------------
+  # Frontend: ESLint (Code Quality & React Rules)
+  # ----------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: frontend-eslint
+        name: ESLint (frontend)
+        entry: npm run --prefix frontend lint
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false
