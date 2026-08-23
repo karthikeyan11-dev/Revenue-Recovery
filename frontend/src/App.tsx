@@ -16,7 +16,9 @@ const queryClient = new QueryClient({
 });
 
 export const AppContent: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'dashboard' | 'cases' | 'agents'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'dashboard' | 'cases' | 'agents'>(
+    'overview'
+  );
 
   return (
     <div className="min-h-screen bg-[#07162c] text-slate-100 flex flex-col">
@@ -29,12 +31,16 @@ export const AppContent: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-bold text-white tracking-tight text-lg">AI Revenue Recovery</span>
+                <span className="font-bold text-white tracking-tight text-lg">
+                  AI Revenue Recovery
+                </span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-medium border border-brand-500/30">
                   Track 03
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-mono">Razorpay AI Buildathon — Autonomous Policy-Governed Orchestrator</p>
+              <p className="text-[11px] text-slate-400 font-mono">
+                Razorpay AI Buildathon — Autonomous Policy-Governed Orchestrator
+              </p>
             </div>
           </div>
 
@@ -105,9 +111,9 @@ export const AppContent: React.FC = () => {
                   </span>
                 </h1>
                 <p className="text-slate-300 text-sm leading-relaxed">
-                  An autonomous AI system detecting revenue at risk from failed payments & abandoned checkouts,
-                  evaluating customer context, selecting bounded recovery actions, and empirically measuring recovered ₹
-                  against a naive baseline.
+                  An autonomous AI system detecting revenue at risk from failed payments & abandoned
+                  checkouts, evaluating customer context, selecting bounded recovery actions, and
+                  empirically measuring recovered ₹ against a naive baseline.
                 </p>
               </div>
             </div>
@@ -120,7 +126,9 @@ export const AppContent: React.FC = () => {
               <div className="p-5 rounded-xl bg-[#0c2340]/60 border border-slate-800 hover:border-slate-700 transition-colors">
                 <div className="flex items-center justify-between text-brand-400 mb-3">
                   <Cpu className="w-5 h-5" />
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Node 01</span>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    Node 01
+                  </span>
                 </div>
                 <h4 className="text-sm font-semibold text-white mb-1">Revenue Detective</h4>
                 <p className="text-xs text-slate-400">
@@ -131,7 +139,9 @@ export const AppContent: React.FC = () => {
               <div className="p-5 rounded-xl bg-[#0c2340]/60 border border-slate-800 hover:border-slate-700 transition-colors">
                 <div className="flex items-center justify-between text-brand-400 mb-3">
                   <Layers className="w-5 h-5" />
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Node 02</span>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    Node 02
+                  </span>
                 </div>
                 <h4 className="text-sm font-semibold text-white mb-1">Customer Intelligence</h4>
                 <p className="text-xs text-slate-400">
@@ -142,7 +152,9 @@ export const AppContent: React.FC = () => {
               <div className="p-5 rounded-xl bg-[#0c2340]/60 border border-slate-800 hover:border-slate-700 transition-colors">
                 <div className="flex items-center justify-between text-brand-400 mb-3">
                   <Terminal className="w-5 h-5" />
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Node 03</span>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    Node 03
+                  </span>
                 </div>
                 <h4 className="text-sm font-semibold text-white mb-1">Recovery Strategist</h4>
                 <p className="text-xs text-slate-400">
@@ -153,7 +165,9 @@ export const AppContent: React.FC = () => {
               <div className="p-5 rounded-xl bg-[#0c2340]/60 border border-slate-800 hover:border-slate-700 transition-colors">
                 <div className="flex items-center justify-between text-brand-400 mb-3">
                   <ArrowUpRight className="w-5 h-5" />
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Node 04</span>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    Node 04
+                  </span>
                 </div>
                 <h4 className="text-sm font-semibold text-white mb-1">Recovery Analyst</h4>
                 <p className="text-xs text-slate-400">

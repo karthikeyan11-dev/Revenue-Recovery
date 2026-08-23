@@ -211,7 +211,9 @@ class SyntheticDataGenerator:
                     failure_reason=reason,
                     raw_error_code=f"ERR_{reason.value[:8]}",
                     raw_error_message=f"Issuer response: {reason.value.replace('_', ' ')}",
-                    attempt_number=1,
+                    attempt_number=random.choices([1, 2, 3, 4], weights=[0.72, 0.18, 0.07, 0.03])[
+                        0
+                    ],
                     created_at=created_time + timedelta(seconds=random.randint(5, 30)),
                 )
                 failures.append(failure)

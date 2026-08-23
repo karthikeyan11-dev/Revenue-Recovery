@@ -54,3 +54,6 @@ class RecoveryCase(Base):
     audit_logs = relationship(
         "AuditLog", back_populates="recovery_case", cascade="all, delete-orphan"
     )
+    promises_to_pay = relationship(
+        "PromiseToPay", back_populates="recovery_case", cascade="all, delete-orphan"
+    )

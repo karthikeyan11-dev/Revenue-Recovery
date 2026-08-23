@@ -10,11 +10,7 @@ export function useCasesQuery(params?: { status?: CaseStatus; limit?: number; of
   return useQuery<CasesListResponse>({
     queryKey: ['cases', 'list', params],
     queryFn: () =>
-      RecoveryCasesService.listRecoveryCases(
-        params?.status,
-        params?.limit,
-        params?.offset
-      ),
+      RecoveryCasesService.listRecoveryCases(params?.status, params?.limit, params?.offset),
   });
 }
 

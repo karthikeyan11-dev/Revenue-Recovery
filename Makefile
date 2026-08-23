@@ -1,15 +1,16 @@
-.PHONY: help dev up down restart logs test lint format seed build clean
+.PHONY: help dev up down restart logs test lint format seed build clean pre-commit-install pre-commit-run
 
 # Python executable inside virtualenv
 VENV_PYTHON = backend/venv/bin/python
 VENV_PYTEST = backend/venv/bin/pytest
 VENV_RUFF = backend/venv/bin/ruff
 VENV_BLACK = backend/venv/bin/black
+VENV_PRECOMMIT = backend/venv/bin/pre-commit
 
 help: ## Show this help message
 	@echo "AI Revenue Recovery Orchestrator — Developer Commands"
 	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 up: ## Start PostgreSQL, FastAPI Backend, and React Frontend via Docker Compose
 	docker compose up --build -d
@@ -54,6 +55,12 @@ format-frontend: ## Auto-format frontend with prettier
 
 format: format-backend format-frontend ## Auto-format all code (backend + frontend)
 	@echo "All code formatted successfully!"
+
+pre-commit-install: ## Install pre-commit hooks into .git/hooks
+	$(VENV_PRECOMMIT) install
+
+pre-commit-run: ## Run all pre-commit hooks against all files
+	$(VENV_PRECOMMIT) run --all-files
 
 seed: ## Populate database with synthetic transaction cohorts
 	cd backend && ./venv/bin/python -c "from app.db import SessionLocal; from app.data import SyntheticDataGenerator; db=SessionLocal(); SyntheticDataGenerator.populate_database(db, customer_count=100, transaction_count=400); db.close()"

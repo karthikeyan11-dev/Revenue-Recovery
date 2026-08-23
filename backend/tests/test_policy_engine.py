@@ -48,3 +48,22 @@ def test_policy_escalates_high_value_at_risk():
     )
     assert result.decision == PolicyDecision.ESCALATED
     assert result.violated_rule == "HIGH_VALUE_HIGH_CHURN_GATE"
+
+
+def test_policy_escalates_insufficient_precedent():
+    """Verify that thin precedent in RAG recovery_playbook triggers deterministic human escalation."""
+    proposal = ProposedRecoveryAction(
+        action_type=ActionType.RETRY,
+        insufficient_precedent=True,
+        retrieved_precedent_count=2,
+        reasoning="Attempting smart retry despite low playbook precedent",
+    )
+    result = PolicyEngine.evaluate(
+        proposal,
+        amount=500.0,  # Even small amount
+        previous_attempts=1,
+        customer_churn_risk=0.10,
+    )
+    assert result.decision == PolicyDecision.ESCALATED
+    assert result.violated_rule == "INSUFFICIENT_PRECEDENT_GATE"
+    assert "Insufficient precedent evidence" in result.reasoning

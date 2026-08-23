@@ -4,8 +4,8 @@ from typing import Any, TypedDict
 from langgraph.graph import END, StateGraph
 
 from app.agents.customer_intelligence import CustomerIntelligenceAgent
-from app.agents.revenue_detective import RevenueDetectiveAgent
 from app.agents.recovery_strategist import RecoveryStrategistAgent
+from app.agents.revenue_detective import RevenueDetectiveAgent
 from app.executor.executor import ActionExecutor
 from app.models.payment_failure import PaymentFailure
 from app.models.recovery_action import ActionOutcome, PolicyDecision
@@ -19,6 +19,7 @@ logger = logging.getLogger("app.agents.graph")
 
 class RecoveryAgentState(TypedDict):
     failure: PaymentFailure
+    db: Any | None
     detective_output: RevenueDetectiveOutput | None
     intel_output: CustomerIntelligenceOutput | None
     proposed_action: ProposedRecoveryAction | None
@@ -29,25 +30,42 @@ class RecoveryAgentState(TypedDict):
     recovered_amount: float
     cost: float
     details: str
+    communication_event_data: dict[str, Any] | None
 
 
 def detective_node(state: RecoveryAgentState) -> dict[str, Any]:
     failure = state["failure"]
-    output = RevenueDetectiveAgent.analyze(failure)
+    db = state.get("db")
+    logger.info(
+        f"[LangGraph:detective_node] Processing failure {failure.id} (reason: {failure.failure_reason.value})"
+    )
+    output = RevenueDetectiveAgent.analyze(failure, db=db)
     return {"detective_output": output}
 
 
 def customer_intel_node(state: RecoveryAgentState) -> dict[str, Any]:
     failure = state["failure"]
     customer = failure.transaction.customer
-    output = CustomerIntelligenceAgent.profile(customer)
+    db = state.get("db")
+    logger.info(
+        f"[LangGraph:customer_intel_node] Profiling customer {customer.id} (segment: {customer.segment.value})"
+    )
+    output = CustomerIntelligenceAgent.profile(customer, db=db)
     return {"intel_output": output}
 
 
 def strategist_node(state: RecoveryAgentState) -> dict[str, Any]:
     detective_out = state["detective_output"]
     intel_out = state["intel_output"]
-    action = RecoveryStrategistAgent.propose_action(detective_out, intel_out)
+    failure = state["failure"]
+    logger.info(
+        f"[LangGraph:strategist_node] Proposing recovery strategy for failure {failure.id} (reason: {failure.failure_reason.value})"
+    )
+    action = RecoveryStrategistAgent.propose_action(
+        detective_output=detective_out,
+        intel_output=intel_out,
+        failure_reason=failure.failure_reason.value,
+    )
     return {"proposed_action": action}
 
 
@@ -56,6 +74,9 @@ def policy_node(state: RecoveryAgentState) -> dict[str, Any]:
     proposal = state["proposed_action"]
     intel = state["intel_output"]
 
+    logger.info(
+        f"[LangGraph:policy_node] Evaluating proposal {proposal.action_type.value} against policy rules"
+    )
     res = PolicyEngine.evaluate(
         proposal=proposal,
         amount=failure.transaction.amount,
@@ -74,6 +95,9 @@ def executor_node(state: RecoveryAgentState) -> dict[str, Any]:
     policy_decision = state["policy_decision"]
     customer = failure.transaction.customer
 
+    logger.info(
+        f"[LangGraph:executor_node] Executing action {proposal.action_type.value} (policy: {policy_decision.value})"
+    )
     res = ActionExecutor.execute(
         action_type=proposal.action_type,
         policy_decision=policy_decision,
@@ -92,6 +116,7 @@ def executor_node(state: RecoveryAgentState) -> dict[str, Any]:
         "recovered_amount": res.recovered_amount,
         "cost": res.cost,
         "details": res.details,
+        "communication_event_data": res.communication_event_data,
     }
 
 
@@ -112,3 +137,7 @@ def build_recovery_graph():
     workflow.add_edge("executor", END)
 
     return workflow.compile()
+
+
+# Compiled Singleton Graph
+recovery_graph = build_recovery_graph()

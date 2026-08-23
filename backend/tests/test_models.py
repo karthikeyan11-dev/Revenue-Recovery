@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -8,6 +10,7 @@ from app.models.audit_log import AuditLog
 from app.models.communication_event import CommunicationEvent, SimulatedResponse
 from app.models.customer import CommunicationChannel, Customer, CustomerSegment
 from app.models.payment_failure import FailureReason, PaymentFailure
+from app.models.promise_to_pay import PromiseStatus, PromiseToPay
 from app.models.recovery_action import ActionOutcome, ActionType, PolicyDecision, RecoveryAction
 from app.models.recovery_case import CaseStatus, RecoveryCase
 from app.models.revenue_leak import LeakType, RevenueLeak
@@ -125,6 +128,17 @@ def test_complete_domain_model_persistence(db_session):
         confidence=0.95,
     )
     db_session.add(log)
+
+    # 9. Promise-to-Pay
+    promise = PromiseToPay(
+        id="ptp_001",
+        case_id=case.id,
+        committed_amount=12500.0,
+        committed_date=datetime.utcnow() + timedelta(days=2),
+        status=PromiseStatus.PENDING,
+        follow_up_count=0,
+    )
+    db_session.add(promise)
     db_session.commit()
 
     # Verify query and relationships
@@ -135,3 +149,5 @@ def test_complete_domain_model_persistence(db_session):
     assert len(retrieved_case.recovery_actions) == 1
     assert len(retrieved_case.communication_events) == 1
     assert len(retrieved_case.audit_logs) == 1
+    assert len(retrieved_case.promises_to_pay) == 1
+    assert retrieved_case.promises_to_pay[0].committed_amount == 12500.0

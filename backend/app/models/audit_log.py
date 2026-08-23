@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.db import Base
@@ -18,7 +18,10 @@ class AuditLog(Base):
     input_summary = Column(Text, nullable=False)
     output_summary = Column(Text, nullable=False)
     decision = Column(String(64), nullable=True)
-    confidence = Column(Float, default=1.0, nullable=False)
+    confidence = Column(Float, default=1.0, nullable=False)  # Primary empirical confidence
+    empirical_confidence = Column(Float, nullable=True)
+    llm_stated_confidence = Column(Float, nullable=True)
+    precedent_sample_size = Column(Integer, default=0, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     # Relationships
