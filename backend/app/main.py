@@ -3,18 +3,10 @@ import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import (
-    agents_router,
-    cases_router,
-    dashboard_router,
-    promises_router,
-    run_router,
-    webhooks_router,
-)
+from app.api import api_router, configure_middleware
 from app.config import settings
-from app.db import Base, check_db_connection, engine
+from app.database import Base, check_db_connection, engine
 from app.schemas.system import HealthResponse, RootResponse
 
 
@@ -58,69 +50,8 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-# CORS Configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Configure Middleware (CORS + Request Logging)
+configure_middleware(app)
 
-# Include Feature Routers
-app.include_router(cases_router)
-app.include_router(dashboard_router)
-app.include_router(agents_router)
-app.include_router(run_router)
-app.include_router(promises_router)
-app.include_router(webhooks_router)
-
-
-@app.get(
-    "/",
-    response_model=RootResponse,
-    tags=["System"],
-    summary="Root metadata endpoint",
-    operation_id="get_root",
-)
-def root() -> RootResponse:
-    """Root metadata endpoint."""
-    return RootResponse(
-        name=settings.PROJECT_NAME,
-        version=settings.VERSION,
-        environment=settings.ENVIRONMENT,
-        docs_url="/docs",
-        health_url="/health",
-    )
-
-
-@app.get(
-    "/health",
-    response_model=HealthResponse,
-    tags=["System"],
-    summary="System health and database connectivity probe",
-    operation_id="get_health",
-)
-def health_check() -> HealthResponse:
-    """
-    Health check endpoint verifying system status and database connectivity.
-    Returns 200 with component statuses (service=online, database=connected/unreachable).
-    """
-    db_ok, db_message = check_db_connection()
-
-    if not db_ok:
-        logger.warning(f"Health check: database connectivity degraded ({db_message})")
-        return HealthResponse(
-            status="degraded",
-            service="online",
-            database="unreachable",
-            version=settings.VERSION,
-            error=db_message,
-        )
-
-    return HealthResponse(
-        status="ok",
-        service="online",
-        database="connected",
-        version=settings.VERSION,
-    )
+# Include All API Routers (System, Cases, Dashboard, Agents, Simulation, Promises, Webhooks)
+app.include_router(api_router)

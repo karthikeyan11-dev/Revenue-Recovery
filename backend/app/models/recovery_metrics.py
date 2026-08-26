@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import JSON, Column, DateTime, Enum, Float, Integer, String
 
-from app.db import Base
+from app.database import Base
 
 
 class StrategyType(str, enum.Enum):

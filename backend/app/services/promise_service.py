@@ -318,3 +318,8 @@ class PromiseTrackerService:
             kept_count=counts["kept"],
             broken_count=counts["broken"],
         )
+
+
+# Compatibility alias
+PromiseService = PromiseTrackerService
+

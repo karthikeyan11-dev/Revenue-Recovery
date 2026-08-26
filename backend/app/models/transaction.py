@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, Enum, Float, ForeignKey, String
 from sqlalchemy.orm import relationship
 
-from app.db import Base
+from app.database import Base
 
 
 class TransactionStatus(str, enum.Enum):

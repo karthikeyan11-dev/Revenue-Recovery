@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, String, Text
 
-from app.db import Base
+from app.database import Base
 
 
 class RazorpayWebhookEvent(Base):

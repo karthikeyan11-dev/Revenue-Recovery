@@ -1,7 +1,13 @@
-"""SQLAlchemy repository layer for database access."""
+from app.repositories.audit import AuditRepository
+from app.repositories.base import BaseRepository
+from app.repositories.customer import CustomerRepository
+from app.repositories.recovery import RecoveryRepository
+from app.repositories.transaction import TransactionRepository
 
-from app.repositories.customer_repository import CustomerRepository
-from app.repositories.recovery_repository import RecoveryRepository
-from app.repositories.transaction_repository import TransactionRepository
-
-__all__ = ["CustomerRepository", "TransactionRepository", "RecoveryRepository"]
+__all__ = [
+    "BaseRepository",
+    "CustomerRepository",
+    "TransactionRepository",
+    "RecoveryRepository",
+    "AuditRepository",
+]

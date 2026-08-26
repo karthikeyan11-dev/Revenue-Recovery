@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
 
-from app.db import Base
+from app.database import Base
 from app.models.customer import CommunicationChannel
 
 

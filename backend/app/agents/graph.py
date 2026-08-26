@@ -1,36 +1,21 @@
 import logging
-from typing import Any, TypedDict
+from typing import Any
 
 from langgraph.graph import END, StateGraph
 
 from app.agents.customer_intelligence import CustomerIntelligenceAgent
 from app.agents.recovery_strategist import RecoveryStrategistAgent
 from app.agents.revenue_detective import RevenueDetectiveAgent
+from app.agents.state import RecoveryAgentState
 from app.executor.executor import ActionExecutor
 from app.models.payment_failure import PaymentFailure
 from app.models.recovery_action import ActionOutcome, PolicyDecision
 from app.policy.engine import PolicyEngine
-from app.schemas.customer_intel import CustomerIntelligenceOutput
+from app.schemas.customer import CustomerIntelligenceOutput
 from app.schemas.detective import RevenueDetectiveOutput
 from app.schemas.strategist import ProposedRecoveryAction
 
 logger = logging.getLogger("app.agents.graph")
-
-
-class RecoveryAgentState(TypedDict):
-    failure: PaymentFailure
-    db: Any | None
-    detective_output: RevenueDetectiveOutput | None
-    intel_output: CustomerIntelligenceOutput | None
-    proposed_action: ProposedRecoveryAction | None
-    policy_decision: PolicyDecision | None
-    policy_reasoning: str | None
-    execution_outcome: ActionOutcome | None
-    recovered: bool
-    recovered_amount: float
-    cost: float
-    details: str
-    communication_event_data: dict[str, Any] | None
 
 
 def detective_node(state: RecoveryAgentState) -> dict[str, Any]:

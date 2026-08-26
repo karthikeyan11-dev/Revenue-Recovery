@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, Enum, Float, String
 from sqlalchemy.orm import relationship
 
-from app.db import Base
+from app.database import Base
 
 
 class CustomerSegment(str, enum.Enum):

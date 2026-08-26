@@ -9,3 +9,5 @@ export function useHealthQuery() {
     retry: 1,
   });
 }
+
+export const useHealth = useHealthQuery;

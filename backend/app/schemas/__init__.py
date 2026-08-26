@@ -3,14 +3,14 @@ from app.schemas.agents import (
     AgentActivityItem,
 )
 from app.schemas.analyst import BaselineComparisonResult, StrategyMetrics
-from app.schemas.cases import (
+from app.schemas.customer import CustomerIntelligenceOutput
+from app.schemas.recovery import (
     CaseActionItem,
     CasesListResponse,
     CaseTimelineItem,
     RecoveryCaseDetail,
     RecoveryCaseSummary,
 )
-from app.schemas.customer_intel import CustomerIntelligenceOutput
 from app.schemas.dashboard import (
     DashboardMetricsResponse,
     RecoveryComparisonChartItem,

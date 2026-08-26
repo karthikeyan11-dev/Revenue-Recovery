@@ -3,12 +3,14 @@ from app.agents.graph import build_recovery_graph, recovery_graph
 from app.agents.recovery_analyst import RecoveryAnalystAgent
 from app.agents.recovery_strategist import RecoveryStrategistAgent
 from app.agents.revenue_detective import RevenueDetectiveAgent
+from app.agents.state import RecoveryAgentState
 
 __all__ = [
     "RevenueDetectiveAgent",
     "CustomerIntelligenceAgent",
     "RecoveryStrategistAgent",
     "RecoveryAnalystAgent",
+    "RecoveryAgentState",
     "build_recovery_graph",
     "recovery_graph",
 ]
