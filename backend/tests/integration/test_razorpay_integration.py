@@ -14,7 +14,7 @@ from app.database import Base, get_db
 from app.integrations.razorpay.client import RazorpayClient
 from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
 from app.main import app
-from app.models.customer import CommunicationChannel, Customer
+from app.models.customer import Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.promise_to_pay import PromiseStatus, PromiseToPay
 from app.models.recovery_case import CaseStatus, RecoveryCase

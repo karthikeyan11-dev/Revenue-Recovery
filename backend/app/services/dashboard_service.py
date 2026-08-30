@@ -41,4 +41,3 @@ class DashboardService:
 
 # Compatibility alias
 AnalyticsService = DashboardService
-

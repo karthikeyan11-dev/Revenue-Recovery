@@ -48,4 +48,3 @@ def get_dashboard_comparison(
         date_from=date_from,
         date_to=date_to,
     )
-

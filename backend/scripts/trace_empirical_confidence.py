@@ -1,4 +1,9 @@
 import logging
+import os
+import sys
+
+# Set Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -6,13 +11,13 @@ from sqlalchemy.pool import StaticPool
 
 from app.agents.customer_intelligence import CustomerIntelligenceAgent
 from app.agents.revenue_detective import RevenueDetectiveAgent
-from app.db import Base
-from app.models.customer import CommunicationChannel, Customer, CustomerSegment
+from app.database import Base
+from app.models.customer import Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.recovery_case import CaseStatus, RecoveryCase
 from app.models.revenue_leak import LeakType, RevenueLeak
 from app.models.transaction import Transaction, TransactionStatus
-from app.repositories.recovery_repository import RecoveryRepository
+from app.repositories.recovery import RecoveryRepository
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -28,49 +33,36 @@ def run_empirical_confidence_trace():
     db = Session()
 
     # Seed diverse historical precedent
-    # Segment 1: LOYAL - 8 resolved cases (6 recovered, 2 failed)
-    # Failure Reason 1: NETWORK_ERROR - 10 resolved cases (8 recovered, 2 failed)
     c_loyal = Customer(
         id="cust_loyal_1",
         name="Rohit Verma",
         email="rohit@example.com",
         phone="+919876543210",
-        segment=CustomerSegment.LOYAL,
     )
-    # Segment 2: AT_RISK - 12 resolved cases (3 recovered, 9 failed)
-    # Failure Reason 2: EXPIRED_CARD - 6 resolved cases (1 recovered, 5 failed)
     c_at_risk = Customer(
         id="cust_risk_1",
         name="Sneha Patil",
         email="sneha@example.com",
         phone="+919876543211",
-        segment=CustomerSegment.AT_RISK,
     )
-    # Segment 3: HIGH_VALUE - 15 resolved cases (13 recovered, 2 failed)
-    # Failure Reason 3: INSUFFICIENT_FUNDS - 20 resolved cases (11 recovered, 9 failed)
     c_high_val = Customer(
         id="cust_hv_1",
         name="Vikramaditya Singhania",
         email="vikram@example.com",
         phone="+919876543212",
-        segment=CustomerSegment.HIGH_VALUE,
     )
-    # Segment 4: CHURNING - 9 resolved cases (1 recovered, 8 failed)
-    # Failure Reason 4: AUTHENTICATION_FAILED - 8 resolved cases (3 recovered, 5 failed)
     c_churning = Customer(
         id="cust_churn_1",
         name="Pooja Nair",
         email="pooja@example.com",
         phone="+919876543213",
-        segment=CustomerSegment.CHURNING,
     )
-    # Another LOYAL customer for invariance verification
+    # Another customer for invariance verification
     c_loyal_2 = Customer(
         id="cust_loyal_2",
         name="Deepak Joshi",
         email="deepak@example.com",
         phone="+919876543214",
-        segment=CustomerSegment.LOYAL,
     )
 
     db.add_all([c_loyal, c_at_risk, c_high_val, c_churning, c_loyal_2])
@@ -183,23 +175,23 @@ def run_empirical_confidence_trace():
         )
         tx.customer = cust
         pf.transaction = tx
+        db.add_all([tx, pf])
+        db.commit()
 
         # Execute Revenue Detective
         det_out = RevenueDetectiveAgent.analyze(pf, db=db)
         # Execute Customer Intelligence
-        intel_out = CustomerIntelligenceAgent.profile(cust, db=db)
+        intel_out = CustomerIntelligenceAgent.profile(cust, failure=pf, db=db)
 
         # Raw DB Stats
         repo = RecoveryRepository(db)
         det_succ, det_tot = repo.get_empirical_failure_recovery_stats(reason)
-        seg_succ, seg_tot = repo.get_empirical_segment_recovery_stats(cust.segment)
 
         res_item = {
             "case_index": idx,
             "label": scen["label"],
             "customer_id": cust.id,
             "customer_name": cust.name,
-            "segment": cust.segment.value,
             "failure_reason": reason.value,
             "amount": amt,
             "detective": {
@@ -216,24 +208,18 @@ def run_empirical_confidence_trace():
                 "reasoning": det_out.reasoning,
             },
             "customer_intel": {
-                "sql_query": (
-                    "SELECT COUNT(*) AS total, COUNT(CASE WHEN rc.status='RECOVERED' THEN 1 END) AS successes "
-                    "FROM recovery_cases rc JOIN customers c ON rc.customer_id=c.id "
-                    f"WHERE c.segment = '{cust.segment.value}' AND rc.status IN ('RECOVERED','FAILED','ESCALATED','BLOCKED')"
-                ),
-                "raw_counts": f"successes={seg_succ}, total={seg_tot}",
-                "smoothing_formula": f"({seg_succ} + 2) / ({seg_tot} + 4)",
+                "payer_reliability_score": intel_out.payer_reliability_score,
                 "empirical_confidence": intel_out.confidence,
                 "llm_stated_confidence": intel_out.llm_stated_confidence,
+                "timing": intel_out.timing_band,
+                "alternate_rails": intel_out.alternate_rails,
                 "insights": intel_out.insights,
             },
         }
         results.append(res_item)
 
         print(f"\n[{idx}] {scen['label']}")
-        print(
-            f"    Customer: {cust.name} ({cust.id}) | Segment: {cust.segment.value} | Amount: ₹{amt:,.2f}"
-        )
+        print(f"    Customer: {cust.name} ({cust.id}) | Amount: ₹{amt:,.2f}")
         print(f"    Failure Reason: {reason.value} | Attempt #{attempt}")
         print("    " + "-" * 80)
         print("    [AGENT 1: REVENUE DETECTIVE]")
@@ -245,15 +231,13 @@ def run_empirical_confidence_trace():
         print(f"      • Logged LLM-Stated Confidence: {det_out.llm_stated_confidence} (Audit only)")
         print(f"      • Diagnostic Reasoning: {det_out.reasoning}")
         print("    [AGENT 2: CUSTOMER INTELLIGENCE]")
-        print(f"      • SQL Query: {res_item['customer_intel']['sql_query']}")
-        print(f"      • Raw Aggregate: {res_item['customer_intel']['raw_counts']}")
-        print(
-            f"      • Laplace Calculation: {res_item['customer_intel']['smoothing_formula']} = {intel_out.confidence:.4f}"
-        )
+        print(f"      • Payer Reliability Score: {intel_out.payer_reliability_score:.4f}")
+        print(f"      • Failure Timing Context: {intel_out.timing_band}")
+        print(f"      • Alternate Rails: {intel_out.alternate_rails}")
         print(
             f"      • Logged LLM-Stated Confidence: {intel_out.llm_stated_confidence} (Audit only)"
         )
-        print(f"      • Behavioral Insights: {intel_out.insights}")
+        print(f"      • Reasoning: {intel_out.insights}")
 
     print("\n" + "=" * 85)
     print("INVARIANCE & VARIANCE PROOF MATRIX:")
@@ -262,23 +246,19 @@ def run_empirical_confidence_trace():
         print(
             f"Case #{r['case_index']} | Reason: {r['failure_reason']:<22} | "
             f"Det Conf: {r['detective']['empirical_confidence']:.4f} ({r['detective']['raw_counts']}) | "
-            f"Seg: {r['segment']:<10} | Intel Conf: {r['customer_intel']['empirical_confidence']:.4f} ({r['customer_intel']['raw_counts']})"
+            f"Payer Reliability: {r['customer_intel']['payer_reliability_score']:.4f}"
         )
     print("-" * 85)
-    print("✓ Case 1 vs Case 5 Invariance Check:")
+    print("✓ Case 1 vs Case 5 Invariance Check (Same Failure Reason NETWORK_ERROR):")
     print(
-        f"  Case 1 (Amount=₹{results[0]['amount']}, Customer={results[0]['customer_name']}): Detective Conf = {results[0]['detective']['empirical_confidence']:.4f}, Intel Conf = {results[0]['customer_intel']['empirical_confidence']:.4f}"
+        f"  Case 1 (Amount=₹{results[0]['amount']}, Customer={results[0]['customer_name']}): Detective Conf = {results[0]['detective']['empirical_confidence']:.4f}"
     )
     print(
-        f"  Case 5 (Amount=₹{results[4]['amount']}, Customer={results[4]['customer_name']}): Detective Conf = {results[4]['detective']['empirical_confidence']:.4f}, Intel Conf = {results[4]['customer_intel']['empirical_confidence']:.4f}"
+        f"  Case 5 (Amount=₹{results[4]['amount']}, Customer={results[4]['customer_name']}): Detective Conf = {results[4]['detective']['empirical_confidence']:.4f}"
     )
     assert (
         results[0]["detective"]["empirical_confidence"]
         == results[4]["detective"]["empirical_confidence"]
-    )
-    assert (
-        results[0]["customer_intel"]["empirical_confidence"]
-        == results[4]["customer_intel"]["empirical_confidence"]
     )
     print(
         "  => EXACT MATCH confirmed (proves statistic derives strictly from aggregate historical distribution)."

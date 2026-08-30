@@ -3,7 +3,6 @@ import pytest
 from app.agents.recovery_analyst import RecoveryAnalystAgent
 from app.agents.recovery_strategist import RecoveryStrategistAgent
 from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
-from app.models.customer import CommunicationChannel
 from app.models.payment_failure import FailureReason
 from app.models.recovery_action import PolicyDecision
 from app.models.revenue_leak import LeakType

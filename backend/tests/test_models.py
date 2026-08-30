@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.db import Base
+from app.database import Base
 from app.models.audit_log import AuditLog
 from app.models.communication_event import CommunicationEvent, SimulatedResponse
 from app.models.customer import CommunicationChannel, Customer

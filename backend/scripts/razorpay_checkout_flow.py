@@ -24,13 +24,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
-from app.db import Base
-from app.integrations.razorpay_client import RazorpayClient
-from app.models.customer import CommunicationChannel, Customer, CustomerSegment
+from app.database import Base
+from app.integrations.razorpay.client import RazorpayClient
+from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
+from app.models.customer import Customer
 from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
 from app.models.webhook_event import RazorpayWebhookEvent
-from app.rag.playbook import RecoveryPlaybookService
-from app.services.recovery_service import RecoveryService
+from app.services.recovery_orchestrator import RecoveryOrchestratorService
 
 
 def print_banner(text: str):
@@ -135,7 +135,6 @@ def main():
             "name": "Sunil Gavaskar",
             "email": "sunil.g@example.com",
             "phone": "+919820011223",
-            "segment": CustomerSegment.LOYAL,
             "vpa": "failure@razorpay",
             "amount": 4999.0,
             "expected_event": "payment.failed",
@@ -147,7 +146,6 @@ def main():
             "name": "Pooja Hegde",
             "email": "pooja.h@example.com",
             "phone": "+919845012345",
-            "segment": CustomerSegment.HIGH_VALUE,
             "vpa": "failure@razorpay",
             "amount": 18500.0,
             "expected_event": "payment.failed",
@@ -159,7 +157,6 @@ def main():
             "name": "Rohan Bopanna",
             "email": "rohan.b@example.com",
             "phone": "+919880054321",
-            "segment": CustomerSegment.REGULAR,
             "vpa": "success@razorpay",
             "amount": 2499.0,
             "expected_event": "payment.captured",
@@ -173,7 +170,7 @@ def main():
 
     for idx, tc in enumerate(hero_cases, 1):
         print_banner(
-            f"HERO CASE #{idx}: {tc['name']} ({tc['segment'].value}) | Amount: ₹{tc['amount']:,.2f} | VPA: {tc['vpa']}"
+            f"HERO CASE #{idx}: {tc['name']} | Amount: ₹{tc['amount']:,.2f} | VPA: {tc['vpa']}"
         )
 
         # 1. Create Customer and Order
@@ -182,7 +179,6 @@ def main():
             name=tc["name"],
             email=tc["email"],
             phone=tc["phone"],
-            segment=tc["segment"],
         )
         db.add(cust)
         db.commit()
@@ -259,7 +255,7 @@ def main():
             db.commit()
 
             # Trigger Recovery Pipeline
-            recovery_service = RecoveryService(db)
+            recovery_service = RecoveryOrchestratorService(db)
             case = recovery_service.process_single_failure_pipeline(failure, use_mock=True)
 
             # Persist Webhook Event

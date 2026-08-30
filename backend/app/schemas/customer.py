@@ -55,4 +55,3 @@ class CustomerIntelligenceOutput(BaseModel):
         ge=0,
         description="Number of matching past resolved failure cases queried",
     )
-

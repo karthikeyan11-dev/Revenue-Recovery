@@ -1,3 +1,3 @@
-from app.integrations.razorpay_client import RazorpayClient
+from app.integrations.razorpay.client import RazorpayClient
 
 __all__ = ["RazorpayClient"]

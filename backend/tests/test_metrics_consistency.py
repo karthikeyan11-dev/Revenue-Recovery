@@ -4,8 +4,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import app.db as db_module
-from app.db import Base, get_db
+import app.database as db_module
+from app.database import Base, get_db
 from app.main import app
 
 test_engine = create_engine(

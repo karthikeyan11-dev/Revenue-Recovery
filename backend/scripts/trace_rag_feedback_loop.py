@@ -1,18 +1,23 @@
 import logging
+import os
+import sys
+
+# Set Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.db import Base
-from app.models.customer import CommunicationChannel, Customer, CustomerSegment
+from app.database import Base
+from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
+from app.models.customer import Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.recovery_action import ActionType, PolicyDecision
 from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
 from app.policy.engine import PolicyEngine
-from app.rag.playbook import RecoveryPlaybookService
 from app.schemas.strategist import ProposedRecoveryAction
-from app.services.recovery_service import RecoveryService
+from app.services.recovery_orchestrator import RecoveryOrchestratorService
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -37,7 +42,7 @@ def run_rag_feedback_loop_verification():
     Session = sessionmaker(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = Session()
-    service = RecoveryService(db)
+    service = RecoveryOrchestratorService(db)
 
     # Create customers
     c1 = Customer(
@@ -45,21 +50,18 @@ def run_rag_feedback_loop_verification():
         name="Aditya Roy",
         email="aditya@example.com",
         phone="+919876543210",
-        segment=CustomerSegment.LOYAL,
     )
     c2 = Customer(
         id="cust_hv_102",
         name="Kavita Krishnamurthy",
         email="kavita@example.com",
         phone="+919876543211",
-        segment=CustomerSegment.HIGH_VALUE,
     )
     c3 = Customer(
         id="cust_reg_103",
         name="Manoj Bajpayee",
         email="manoj@example.com",
         phone="+919876543212",
-        segment=CustomerSegment.REGULAR,
     )
     db.add_all([c1, c2, c3])
     db.commit()
@@ -128,7 +130,6 @@ def run_rag_feedback_loop_verification():
             "case_idx": idx,
             "case_id": case.id,
             "customer": cust.name,
-            "segment": cust.segment.value,
             "reason": reason.value,
             "amount": amt,
             "playbook_before": pre_count,
@@ -142,9 +143,7 @@ def run_rag_feedback_loop_verification():
         trace_records.append(record)
 
         is_insufficient = record["retrieved_count"] < 5
-        print(
-            f"\n[Case #{idx:02d}] {cust.name} ({cust.segment.value}) | Amount: ₹{amt:,.2f} | Reason: {reason.value}"
-        )
+        print(f"\n[Case #{idx:02d}] {cust.name} | Amount: ₹{amt:,.2f} | Reason: {reason.value}")
         print(f"  • Playbook size BEFORE: {pre_count} cases")
         print(f"  • Strategist Tool Call Retrieved: {record['retrieved_count']} similar cases")
         print(f"  • Insufficient Precedent Flag: {is_insufficient}")

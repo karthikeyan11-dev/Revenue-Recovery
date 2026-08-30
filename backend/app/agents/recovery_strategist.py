@@ -1,12 +1,11 @@
 import logging
-from typing import Any
 
-from app.agents.llm_client import LLMClient
+from app.integrations.llm.client import LLMClient
+from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
 from app.models.payment_failure import FailureReason
 from app.models.recovery_action import ActionType
-from app.rag.playbook import RecoveryPlaybookService
-from app.repositories.recovery_repository import RecoveryRepository
-from app.schemas.customer_intel import CustomerIntelligenceOutput
+from app.repositories.recovery import RecoveryRepository
+from app.schemas.customer import CustomerIntelligenceOutput
 from app.schemas.detective import RevenueDetectiveOutput
 from app.schemas.strategist import ProposedRecoveryAction
 
@@ -29,9 +28,7 @@ class RecoveryStrategistAgent:
         is_reproposal: bool = False,
     ) -> ProposedRecoveryAction:
         f_reason = (
-            failure_reason.value
-            if isinstance(failure_reason, FailureReason)
-            else failure_reason
+            failure_reason.value if isinstance(failure_reason, FailureReason) else failure_reason
         )
 
         # 1. RAG Playbook Precedent Retrieval (Dense Chroma Vector Search)
@@ -42,9 +39,7 @@ class RecoveryStrategistAgent:
         k = len(retrieved_cases)
 
         # 2. Empirical Precedent Recovery Rate Calculation (Laplace Smoothed)
-        successes = sum(
-            1 for r in retrieved_cases if r.get("outcome") in ("RECOVERED", "SUCCESS")
-        )
+        successes = sum(1 for r in retrieved_cases if r.get("outcome") in ("RECOVERED", "SUCCESS"))
         empirical_confidence = RecoveryRepository.calculate_laplace_confidence(
             successes=successes,
             total=k,
@@ -62,7 +57,9 @@ class RecoveryStrategistAgent:
 
         # 4. Determine Primary Available Outreach Channel
         available = intel_output.available_channels or ["EMAIL"]
-        primary_channel = "WHATSAPP" if "WHATSAPP" in available else ("EMAIL" if "EMAIL" in available else "SMS")
+        primary_channel = (
+            "WHATSAPP" if "WHATSAPP" in available else ("EMAIL" if "EMAIL" in available else "SMS")
+        )
 
         # 5. Deterministic Bounded Strategy Selection Matrix
         reason_upper = str(f_reason).upper()
@@ -84,9 +81,7 @@ class RecoveryStrategistAgent:
             incentive_percent = 0.0
             channel = None
             message_tone = "NEUTRAL"
-            base_reasoning = (
-                "Transient network/gateway error detected. Smart automated retry scheduled with 1h backoff."
-            )
+            base_reasoning = "Transient network/gateway error detected. Smart automated retry scheduled with 1h backoff."
         elif "INSUFFICIENT_FUNDS" in reason_upper:
             # If customer has alternate successful rail (e.g. UPI), dispatch payment link for rail switch
             if intel_output.has_alternate_rail:
@@ -106,12 +101,14 @@ class RecoveryStrategistAgent:
                 incentive_percent = 0.0
                 channel = None
                 message_tone = "NEUTRAL"
-                base_reasoning = (
-                    "Insufficient funds failure detected. Smart retry scheduled for optimal 12-hour banking recharge window."
-                )
+                base_reasoning = "Insufficient funds failure detected. Smart retry scheduled for optimal 12-hour banking recharge window."
         elif "USER_DROPOFF" in reason_upper or "AUTHENTICATION" in reason_upper:
             # Checkout friction/drop-off: interactive WhatsApp 1-click recovery with modest completion coupon
-            action_type = ActionType.SEND_WHATSAPP if "WHATSAPP" in available else ActionType.SEND_PAYMENT_LINK
+            action_type = (
+                ActionType.SEND_WHATSAPP
+                if "WHATSAPP" in available
+                else ActionType.SEND_PAYMENT_LINK
+            )
             retry_delay_hours = 0
             incentive_percent = 5.0
             channel = "WHATSAPP" if "WHATSAPP" in available else primary_channel
@@ -136,7 +133,10 @@ class RecoveryStrategistAgent:
                     f"Payment method constraint ({f_reason}). Dispatched secure alternative payment method link "
                     f"via {channel}."
                 )
-        elif detective_output.recoverability_score >= 0.80 and intel_output.payer_reliability_score >= 0.70:
+        elif (
+            detective_output.recoverability_score >= 0.80
+            and intel_output.payer_reliability_score >= 0.70
+        ):
             action_type = ActionType.RETRY
             retry_delay_hours = 4
             incentive_percent = 0.0
@@ -152,7 +152,9 @@ class RecoveryStrategistAgent:
             incentive_percent = 0.0
             channel = primary_channel
             message_tone = "INFORMATIVE"
-            base_reasoning = f"Standard recovery link dispatched across available channel ({primary_channel})."
+            base_reasoning = (
+                f"Standard recovery link dispatched across available channel ({primary_channel})."
+            )
 
         # 6. Format Grounding Evidence for LLM Tactical Justification
         if retrieved_cases:

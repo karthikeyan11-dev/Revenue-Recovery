@@ -28,7 +28,10 @@ class WhatsAppSimulator:
 
         # Standard recovery message (55% UPI conversion)
         if roll < 0.55:
-            return SimulatedResponse.PAID, "Customer opened WhatsApp and completed Razorpay UPI payment"
+            return (
+                SimulatedResponse.PAID,
+                "Customer opened WhatsApp and completed Razorpay UPI payment",
+            )
         if roll < 0.78:
             return SimulatedResponse.CLICKED, "Customer clicked link but abandoned checkout"
         if roll < 0.92:

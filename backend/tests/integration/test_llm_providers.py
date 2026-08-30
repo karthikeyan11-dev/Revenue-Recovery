@@ -2,17 +2,17 @@ import pytest
 from pydantic import ValidationError
 
 from app.agents.customer_intelligence import CustomerIntelligenceAgent
-from app.agents.llm_client import LLMClient
 from app.agents.recovery_strategist import RecoveryStrategistAgent
 from app.agents.revenue_detective import RevenueDetectiveAgent
 from app.config import Settings
 from app.integrations.llm.anthropic import AnthropicProvider
+from app.integrations.llm.client import LLMClient
 from app.integrations.llm.factory import get_llm_provider
 from app.integrations.llm.google import GoogleProvider
 from app.integrations.llm.mock import MockProvider
 from app.integrations.llm.openai import OpenAIProvider
 from app.integrations.llm.openrouter import OpenRouterProvider
-from app.models.customer import CommunicationChannel, Customer
+from app.models.customer import Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.transaction import Transaction, TransactionStatus
 
@@ -35,7 +35,9 @@ def test_provider_factory_instantiates_correct_classes():
     assert p_google.model == "gemini-1.5-flash"
 
     # OpenRouter
-    p_openrouter = get_llm_provider("openrouter", "google/gemini-2.0-flash-001", "sk-or-v1-test-key")
+    p_openrouter = get_llm_provider(
+        "openrouter", "google/gemini-2.0-flash-001", "sk-or-v1-test-key"
+    )
     assert isinstance(p_openrouter, OpenRouterProvider)
     assert p_openrouter.model == "google/gemini-2.0-flash-001"
 
@@ -51,20 +53,29 @@ def test_openrouter_missing_api_key_raises_error():
         OpenRouterProvider(model="anthropic/claude-3.5-sonnet", api_key="")
 
     with pytest.raises(ValueError, match="OPENROUTER_API_KEY is required"):
-        OpenRouterProvider(model="anthropic/claude-3.5-sonnet", api_key="your_openrouter_api_key_here")
+        OpenRouterProvider(
+            model="anthropic/claude-3.5-sonnet", api_key="your_openrouter_api_key_here"
+        )
 
 
 def test_openrouter_model_passthrough_and_headers():
     """Verify OpenRouter preserves arbitrary vendor/model identifier and sets appropriate headers."""
-    provider = OpenRouterProvider(model="meta-llama/llama-3.3-70b-instruct", api_key="sk-or-v1-valid-token")
+    provider = OpenRouterProvider(
+        model="meta-llama/llama-3.3-70b-instruct", api_key="sk-or-v1-valid-token"
+    )
     assert provider.model == "meta-llama/llama-3.3-70b-instruct"
     assert str(provider.client.base_url).rstrip("/") == "https://openrouter.ai/api/v1"
-    assert provider.client.default_headers.get("HTTP-Referer") == "https://github.com/karthikeyan11-dev/Revenue-Recovery"
+    assert (
+        provider.client.default_headers.get("HTTP-Referer")
+        == "https://github.com/karthikeyan11-dev/Revenue-Recovery"
+    )
 
 
 def test_openrouter_generate_reasoning_mocked(monkeypatch):
     """Verify OpenRouter completions flow correctly into generated reasoning string."""
-    provider = OpenRouterProvider(model="google/gemini-2.0-flash-001", api_key="sk-or-v1-valid-token")
+    provider = OpenRouterProvider(
+        model="google/gemini-2.0-flash-001", api_key="sk-or-v1-valid-token"
+    )
 
     class MockMessage:
         content = "Strategic analysis via OpenRouter: Recover transaction via WhatsApp."

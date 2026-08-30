@@ -70,9 +70,7 @@ class RecoveryRepository(BaseRepository[RecoveryCase]):
     # Alias for convenience
     get_empirical_failure_stats = get_empirical_failure_recovery_stats
 
-    def get_empirical_customer_risk_stats(
-        self, churn_risk: float = 0.50
-    ) -> tuple[int, int]:
+    def get_empirical_customer_risk_stats(self, churn_risk: float = 0.50) -> tuple[int, int]:
         """
         Executes real SQL aggregate query over past resolved cases.
         Returns (successes, total_cases).
@@ -84,24 +82,17 @@ class RecoveryRepository(BaseRepository[RecoveryCase]):
             CaseStatus.BLOCKED,
         ]
 
-        query = (
-            self.db.query(
-                func.count(RecoveryCase.id).label("total"),
-                func.count(case((RecoveryCase.status == CaseStatus.RECOVERED, 1))).label(
-                    "successes"
-                ),
-            )
-            .filter(RecoveryCase.status.in_(resolved_statuses))
-        )
+        query = self.db.query(
+            func.count(RecoveryCase.id).label("total"),
+            func.count(case((RecoveryCase.status == CaseStatus.RECOVERED, 1))).label("successes"),
+        ).filter(RecoveryCase.status.in_(resolved_statuses))
 
         res = query.first()
         if not res or res.total is None or res.total == 0:
             return 0, 0
         return int(res.successes or 0), int(res.total or 0)
 
-    def get_empirical_segment_recovery_stats(
-        self, segment: Any = None
-    ) -> tuple[int, int]:
+    def get_empirical_segment_recovery_stats(self, segment: Any = None) -> tuple[int, int]:
         """Backwards compatibility alias for generic recovery stats."""
         return self.get_empirical_customer_risk_stats()
 

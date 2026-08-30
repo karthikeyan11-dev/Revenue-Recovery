@@ -1,6 +1,6 @@
 import React from 'react';
-import { NAV_ITEMS } from '../../constants/routes';
-import type { RouteKey } from '../../constants/routes';
+import { NAV_ITEMS } from '../../constants/routes.constants';
+import type { RouteKey } from '../../constants/routes.constants';
 
 
 export interface SidebarProps {

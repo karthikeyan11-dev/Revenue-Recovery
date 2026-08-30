@@ -8,8 +8,8 @@ Demonstrates:
   4. Available Contact Channels (Deterministic phone/email channel reachability)
 """
 
-import sys
 import os
+import sys
 from datetime import datetime, timedelta
 
 # Ensure backend root is on sys.path
@@ -19,14 +19,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.database import Base
-from app.models.customer import Customer
-from app.models.transaction import Transaction, TransactionStatus, PaymentMethod
-from app.models.payment_failure import PaymentFailure, FailureReason
 from app.agents.customer_intelligence import CustomerIntelligenceAgent
 from app.agents.recovery_strategist import RecoveryStrategistAgent
-from app.schemas.detective import RevenueDetectiveOutput
+from app.database import Base
+from app.models.customer import Customer
+from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.revenue_leak import LeakType
+from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
+from app.schemas.detective import RevenueDetectiveOutput
 
 
 def run_verification():
@@ -35,7 +35,9 @@ def run_verification():
     print("=" * 80)
 
     # In-memory SQLite DB
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    engine = create_engine(
+        "sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = Session()
@@ -102,10 +104,18 @@ def run_verification():
 
     intel1 = CustomerIntelligenceAgent.profile(c1, failure=pf1_curr, db=db)
     print(f"• Customer: {c1.name} ({c1.id})")
-    print(f"• Total Past Attempts: {intel1.total_past_transactions}, Successes: {intel1.successful_past_transactions}")
-    print(f"• 1. Payer Reliability Score: {intel1.payer_reliability_score:.4f} (Laplace (5+2)/(7+4) = 7/11 = 0.6364)")
-    print(f"• 2. Failure Timing: {intel1.timing_band} (hours_since_failure={intel1.hours_since_failure:.2f}h, recent_burst={intel1.recent_failure_count})")
-    print(f"• 3. Alternate Rail Signal: has_alternate_rail={intel1.has_alternate_rail}, alternate_rails={intel1.alternate_rails}")
+    print(
+        f"• Total Past Attempts: {intel1.total_past_transactions}, Successes: {intel1.successful_past_transactions}"
+    )
+    print(
+        f"• 1. Payer Reliability Score: {intel1.payer_reliability_score:.4f} (Laplace (5+2)/(7+4) = 7/11 = 0.6364)"
+    )
+    print(
+        f"• 2. Failure Timing: {intel1.timing_band} (hours_since_failure={intel1.hours_since_failure:.2f}h, recent_burst={intel1.recent_failure_count})"
+    )
+    print(
+        f"• 3. Alternate Rail Signal: has_alternate_rail={intel1.has_alternate_rail}, alternate_rails={intel1.alternate_rails}"
+    )
     print(f"• 4. Available Contact Channels: {intel1.available_channels}")
 
     # Strategist proposal
@@ -117,8 +127,12 @@ def run_verification():
         recoverability_score=0.85,
         reasoning="Bank declined card authorization",
     )
-    strat1 = RecoveryStrategistAgent.propose_action(det1, intel1, failure_reason=FailureReason.BANK_DECLINED)
-    print(f"• Strategist Proposes: {strat1.action_type.value} via {strat1.channel} (Reason: {strat1.reasoning[:90]}...)")
+    strat1 = RecoveryStrategistAgent.propose_action(
+        det1, intel1, failure_reason=FailureReason.BANK_DECLINED
+    )
+    print(
+        f"• Strategist Proposes: {strat1.action_type.value} via {strat1.channel} (Reason: {strat1.reasoning[:90]}...)"
+    )
 
     assert intel1.payer_reliability_score == 0.6364
     assert intel1.has_alternate_rail is True
@@ -161,10 +175,18 @@ def run_verification():
 
     intel2 = CustomerIntelligenceAgent.profile(c2, failure=pf2_curr, db=db)
     print(f"• Customer: {c2.name} ({c2.id})")
-    print(f"• Total Past Attempts: {intel2.total_past_transactions}, Successes: {intel2.successful_past_transactions}")
-    print(f"• 1. Payer Reliability Score: {intel2.payer_reliability_score:.4f} (Laplace (0+2)/(1+4) = 2/5 = 0.4000)")
-    print(f"• 2. Failure Timing: {intel2.timing_band} (hours_since_failure={intel2.hours_since_failure:.2f}h, recent_burst={intel2.recent_failure_count})")
-    print(f"• 3. Alternate Rail Signal: has_alternate_rail={intel2.has_alternate_rail}, alternate_rails={intel2.alternate_rails}")
+    print(
+        f"• Total Past Attempts: {intel2.total_past_transactions}, Successes: {intel2.successful_past_transactions}"
+    )
+    print(
+        f"• 1. Payer Reliability Score: {intel2.payer_reliability_score:.4f} (Laplace (0+2)/(1+4) = 2/5 = 0.4000)"
+    )
+    print(
+        f"• 2. Failure Timing: {intel2.timing_band} (hours_since_failure={intel2.hours_since_failure:.2f}h, recent_burst={intel2.recent_failure_count})"
+    )
+    print(
+        f"• 3. Alternate Rail Signal: has_alternate_rail={intel2.has_alternate_rail}, alternate_rails={intel2.alternate_rails}"
+    )
     print(f"• 4. Available Contact Channels: {intel2.available_channels}")
 
     assert intel2.payer_reliability_score == 0.4000
@@ -220,7 +242,9 @@ def run_verification():
         recoverability_score=0.80,
         reasoning="Expired card credentials",
     )
-    strat3 = RecoveryStrategistAgent.propose_action(det3, intel3, failure_reason=FailureReason.EXPIRED_CARD)
+    strat3 = RecoveryStrategistAgent.propose_action(
+        det3, intel3, failure_reason=FailureReason.EXPIRED_CARD
+    )
     print(f"• Strategist Proposes: {strat3.action_type.value} via {strat3.channel}")
 
     assert intel3.available_channels == ["EMAIL"]
