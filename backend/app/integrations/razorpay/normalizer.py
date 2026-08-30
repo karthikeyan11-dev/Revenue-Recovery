@@ -11,9 +11,7 @@ def normalize_razorpay_failure_reason(
     """
     tokens = " ".join(filter(None, [error_code, error_reason, error_description])).lower()
 
-    if any(
-        t in tokens for t in ["insufficient", "low_balance", "funds", "balance_insufficient"]
-    ):
+    if any(t in tokens for t in ["insufficient", "low_balance", "funds", "balance_insufficient"]):
         return FailureReason.INSUFFICIENT_FUNDS
     elif any(
         t in tokens
@@ -36,8 +34,7 @@ def normalize_razorpay_failure_reason(
     elif any(t in tokens for t in ["limit", "amount_exceeded", "daily_limit", "max_amount"]):
         return FailureReason.LIMIT_EXCEEDED
     elif any(
-        t in tokens
-        for t in ["network", "timeout", "gateway_error", "server_error", "bad_gateway"]
+        t in tokens for t in ["network", "timeout", "gateway_error", "server_error", "bad_gateway"]
     ):
         return FailureReason.NETWORK_ERROR
     else:

@@ -35,7 +35,9 @@ REGISTERED_AGENTS = [
 )
 def get_agent_activity(
     agent: str | None = Query(None, description="Filter by agent name"),
-    status: str | None = Query(None, description="Filter by status (Completed, Approved, Escalated)"),
+    status: str | None = Query(
+        None, description="Filter by status (Completed, Approved, Escalated)"
+    ),
     search: str | None = Query(None, description="Search by Case ID, Agent, or Message"),
     time_range: str | None = Query(None, description="Time range: '24h', '7d', '30d', 'all'"),
     limit: int = Query(50, ge=1, le=200, description="Max activities to fetch"),
@@ -125,7 +127,9 @@ def get_agent_activity(
                 decision=act.decision,
                 confidence=act.confidence,
                 empirical_confidence=(
-                    act.empirical_confidence if act.empirical_confidence is not None else act.confidence
+                    act.empirical_confidence
+                    if act.empirical_confidence is not None
+                    else act.confidence
                 ),
                 llm_stated_confidence=act.llm_stated_confidence,
                 precedent_sample_size=act.precedent_sample_size or 0,
@@ -139,10 +143,7 @@ def get_agent_activity(
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     actions_today = (
-        db.query(func.count(AuditLog.id))
-        .filter(AuditLog.timestamp >= today_start)
-        .scalar()
-        or 0
+        db.query(func.count(AuditLog.id)).filter(AuditLog.timestamp >= today_start).scalar() or 0
     )
     if actions_today == 0:
         actions_today = len(items)
@@ -170,6 +171,7 @@ def get_agent_activity(
     ]
 
     from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
+
     pb_stats = RecoveryPlaybookService.get_playbook_stats()
 
     stats = AgentActivityStats(
@@ -199,5 +201,6 @@ def get_agent_activity(
 )
 def get_playbook_detailed_stats() -> PlaybookStatsDetail:
     from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
+
     raw_stats = RecoveryPlaybookService.get_playbook_stats()
     return PlaybookStatsDetail(**raw_stats)

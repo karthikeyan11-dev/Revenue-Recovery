@@ -19,18 +19,19 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.data.synthetic_generator import SyntheticDataGenerator
-from app.db import Base
-from app.integrations.razorpay_client import RazorpayClient
-from app.models.customer import CommunicationChannel, Customer, CustomerSegment
+from app.database import Base
+from app.generators.synthetic_generator import SyntheticDataGenerator
+from app.integrations.razorpay.client import RazorpayClient
+from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
+from app.models.customer import Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.recovery_case import CaseStatus, RecoveryCase
 from app.models.revenue_leak import LeakType, RevenueLeak
 from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
-from app.rag.playbook import RecoveryPlaybookService
-from app.services.analytics_service import AnalyticsService
+from app.services.dashboard_service import DashboardService
 from app.services.promise_service import PromiseTrackerService
-from app.services.recovery_service import RecoveryService
+from app.services.recovery_orchestrator import RecoveryOrchestratorService
+from app.services.simulation_service import SimulationService
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -54,13 +55,13 @@ def verify_phase7():
 
     SyntheticDataGenerator.populate_database(db, customer_count=50, transaction_count=100)
 
-    rec_service = RecoveryService(db)
+    rec_service = RecoveryOrchestratorService(db)
     sample_failures = db.query(PaymentFailure).limit(5).all()
 
     for idx, failure in enumerate(sample_failures, 1):
         case = rec_service.process_single_failure_pipeline(failure, use_mock=True)
         print(
-            f"\n[Case {idx}] ID: {case.id} | Segment: {case.customer.segment.value} | Reason: {failure.failure_reason.value}"
+            f"\n[Case {idx}] ID: {case.id} | Customer: {case.customer.name} | Reason: {failure.failure_reason.value}"
         )
         for log in case.audit_logs:
             precedent_str = (
@@ -106,7 +107,6 @@ def verify_phase7():
         name="Ananya Panday",
         email="ananya@example.com",
         phone="+919800011122",
-        segment=CustomerSegment.HIGH_VALUE,
     )
     db.add(constructed_cust)
     db.commit()
@@ -155,7 +155,6 @@ def verify_phase7():
         name="Karan Johar",
         email="karan@example.com",
         phone="+919811122233",
-        segment=CustomerSegment.REGULAR,
     )
     db.add(ptp_cust)
     ptp_tx = Transaction(
@@ -231,11 +230,12 @@ def verify_phase7():
     # --------------------------------------------------------------------------
     # 6. Baseline vs AI Comparison Isolation in DB
     # --------------------------------------------------------------------------
-    sim = AnalyticsService(db)
-    sim.run_baseline_simulation(limit=50)
-    sim.run_ai_simulation(limit=50, use_mock=True)
+    sim_service = SimulationService(db)
+    dash_service = DashboardService(db)
+    sim_service.run_baseline_simulation(limit=50)
+    sim_service.run_ai_simulation(limit=50, use_mock=True)
 
-    summary = sim.get_dashboard_summary()
+    summary = dash_service.get_dashboard_summary()
     print(f"Revenue at Risk:     ₹{summary.total_revenue_at_risk:,.2f}")
     print(
         f"Baseline Recovered:  ₹{summary.recovery_uplift_inr:,.2f} ({summary.baseline_recovery_rate:.1f}%)"

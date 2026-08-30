@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import SessionLocal, get_db
 from app.integrations.razorpay.client import RazorpayClient
-from app.models.customer import CommunicationChannel, Customer
+from app.models.customer import Customer
 from app.models.payment_failure import PaymentFailure
 from app.models.promise_to_pay import PromiseStatus
 from app.models.recovery_case import CaseStatus, RecoveryCase

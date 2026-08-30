@@ -1,7 +1,7 @@
 import logging
 
 from app.analytics.metrics import RecoveryMetricsCalculator
-from app.rag.playbook import RecoveryPlaybookService
+from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
 from app.schemas.analyst import BaselineComparisonResult, StrategyMetrics
 
 logger = logging.getLogger("app.agents.analyst")

@@ -27,7 +27,9 @@ class RecoveryPlaybookService:
     @classmethod
     def get_client(cls) -> chromadb.ClientAPI:
         if cls._client is None:
-            chroma_path = Path(os.environ.get("CHROMA_PERSIST_DIR", str(BASE_DIR / "data" / "chroma_db")))
+            chroma_path = Path(
+                os.environ.get("CHROMA_PERSIST_DIR", str(BASE_DIR / "data" / "chroma_db"))
+            )
             chroma_path.mkdir(parents=True, exist_ok=True)
             cls._client = chromadb.PersistentClient(
                 path=str(chroma_path),
@@ -167,12 +169,15 @@ class RecoveryPlaybookService:
             baseline = sum(1 for m in metas if str(m.get("case_id", "")).startswith("hist_"))
 
             from collections import Counter
+
             reason_counts = Counter(str(m.get("failure_reason", "UNKNOWN")) for m in metas)
             outcome_counts = Counter(str(m.get("outcome", "FAILED")).upper() for m in metas)
             action_counts = Counter(str(m.get("action_taken", "RETRY")) for m in metas)
 
             recovered_c = outcome_counts.get("RECOVERED", 0) + outcome_counts.get("SUCCESS", 0)
-            failed_c = sum(v for k, v in outcome_counts.items() if k not in ["RECOVERED", "SUCCESS"])
+            failed_c = sum(
+                v for k, v in outcome_counts.items() if k not in ["RECOVERED", "SUCCESS"]
+            )
 
             reasons_list = [
                 {

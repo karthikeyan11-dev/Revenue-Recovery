@@ -6,7 +6,7 @@ from sqlalchemy.pool import StaticPool
 from app.agents.customer_intelligence import CustomerIntelligenceAgent
 from app.agents.revenue_detective import RevenueDetectiveAgent
 from app.database import Base
-from app.models.customer import CommunicationChannel, Customer
+from app.models.customer import Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.recovery_case import CaseStatus, RecoveryCase
 from app.models.revenue_leak import LeakType, RevenueLeak

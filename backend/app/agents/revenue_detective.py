@@ -2,10 +2,10 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from app.agents.llm_client import LLMClient
+from app.integrations.llm.client import LLMClient
 from app.models.payment_failure import PaymentFailure
 from app.models.revenue_leak import LeakType
-from app.repositories.recovery_repository import RecoveryRepository
+from app.repositories.recovery import RecoveryRepository
 from app.schemas.detective import RevenueDetectiveOutput
 
 logger = logging.getLogger("app.agents.detective")

@@ -73,7 +73,7 @@ def test_policy_rejection_reproposal_loop_in_graph():
     """Verify that a rejected proposal is routed back to Strategist for exactly 1 re-proposal,
     and a second rejection forces human escalation."""
     from app.agents.graph import recovery_graph
-    from app.models.customer import CommunicationChannel, Customer
+    from app.models.customer import Customer
     from app.models.payment_failure import FailureReason, PaymentFailure
     from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
 

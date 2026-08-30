@@ -5,12 +5,12 @@ from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.agents.llm_client import LLMClient
+from app.integrations.llm.client import LLMClient
 from app.models.customer import Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.transaction import Transaction, TransactionStatus
-from app.repositories.recovery_repository import RecoveryRepository
-from app.schemas.customer_intel import CustomerIntelligenceOutput
+from app.repositories.recovery import RecoveryRepository
+from app.schemas.customer import CustomerIntelligenceOutput
 
 logger = logging.getLogger("app.agents.intelligence")
 
@@ -38,11 +38,7 @@ class CustomerIntelligenceAgent:
         # ---------------------------------------------------------
         past_txs: list[Transaction] = []
         if db is not None:
-            past_txs = (
-                db.query(Transaction)
-                .filter(Transaction.customer_id == customer.id)
-                .all()
-            )
+            past_txs = db.query(Transaction).filter(Transaction.customer_id == customer.id).all()
         elif hasattr(customer, "transactions") and customer.transactions:
             past_txs = list(customer.transactions)
 
@@ -61,14 +57,8 @@ class CustomerIntelligenceAgent:
         # Time elapsed since failure and count of failures in recent 30-min window
         # ---------------------------------------------------------
         now = datetime.utcnow()
-        failure_time = (
-            failure.created_at
-            if failure and failure.created_at
-            else now
-        )
-        hours_since_failure = max(
-            0.0, round((now - failure_time).total_seconds() / 3600.0, 2)
-        )
+        failure_time = failure.created_at if failure and failure.created_at else now
+        hours_since_failure = max(0.0, round((now - failure_time).total_seconds() / 3600.0, 2))
 
         recent_failure_count = 1
         if db is not None and failure is not None:
@@ -105,9 +95,9 @@ class CustomerIntelligenceAgent:
         }
 
         if current_failed_method:
-            alternate_rails = sorted(list(successful_methods - {current_failed_method}))
+            alternate_rails = sorted(successful_methods - {current_failed_method})
         else:
-            alternate_rails = sorted(list(successful_methods))
+            alternate_rails = sorted(successful_methods)
 
         has_alternate_rail = len(alternate_rails) > 0
 
@@ -132,11 +122,7 @@ class CustomerIntelligenceAgent:
         # ---------------------------------------------------------
         total_precedent = 0
         success_count = 0
-        failure_reason: Any = (
-            failure.failure_reason
-            if failure
-            else FailureReason.BANK_DECLINED
-        )
+        failure_reason: Any = failure.failure_reason if failure else FailureReason.BANK_DECLINED
 
         if db is not None:
             repo = RecoveryRepository(db)

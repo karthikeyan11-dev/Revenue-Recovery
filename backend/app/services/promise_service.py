@@ -18,7 +18,7 @@ from app.models.recovery_case import CaseStatus, RecoveryCase
 from app.models.transaction import Transaction
 from app.policy.engine import PolicyEngine
 from app.policy.rules import MAX_PROMISE_FOLLOWUPS, RULE_MAX_PROMISE_FOLLOWUPS
-from app.repositories.recovery_repository import RecoveryRepository
+from app.repositories.recovery import RecoveryRepository
 from app.schemas.promise import PromiseListResponse, PromiseToPaySummary
 
 logger = logging.getLogger("app.services.promise")
@@ -103,11 +103,7 @@ class PromiseTrackerService:
                     case_id=case.id,
                     failure_reason=failure.failure_reason.value if failure else "UNKNOWN",
                     action_taken="PROMISE_TO_PAY",
-                    channel=(
-                        "WHATSAPP"
-                        if (customer and customer.phone)
-                        else "EMAIL"
-                    ),
+                    channel=("WHATSAPP" if (customer and customer.phone) else "EMAIL"),
                     outcome="SUCCESS",
                     recovered_amount=promise.committed_amount,
                 )
@@ -169,10 +165,16 @@ class PromiseTrackerService:
         leak = case.revenue_leak
 
         det_out = RevenueDetectiveAgent.analyze(failure, db=self.db) if failure else None
-        intel_out = CustomerIntelligenceAgent.profile(customer, failure=failure, db=self.db) if customer else None
+        intel_out = (
+            CustomerIntelligenceAgent.profile(customer, failure=failure, db=self.db)
+            if customer
+            else None
+        )
 
         if not det_out or not intel_out:
-            logger.error(f"Cannot generate follow-up strategy for promise {promise_id}: missing detective or intel")
+            logger.error(
+                f"Cannot generate follow-up strategy for promise {promise_id}: missing detective or intel"
+            )
             return promise, case
 
         strat_out = RecoveryStrategistAgent.propose_action(
@@ -332,4 +334,3 @@ class PromiseTrackerService:
 
 # Compatibility alias
 PromiseService = PromiseTrackerService
-

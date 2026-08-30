@@ -28,10 +28,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy python packages from builder
 COPY --from=builder /root/.local /root/.local
 
-# Copy application code and migration files
+# Copy application code
 COPY app ./app
-COPY alembic ./alembic
-COPY alembic.ini ./alembic.ini
 
 ENV PATH=/root/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
@@ -42,4 +40,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

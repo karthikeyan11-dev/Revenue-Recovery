@@ -15,15 +15,15 @@ from sqlalchemy.orm import sessionmaker
 # Set Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.db import Base
-from app.models.customer import CommunicationChannel, Customer, CustomerSegment
+from app.database import Base
+from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
+from app.models.customer import Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.promise_to_pay import PromiseToPay
 from app.models.recovery_case import CaseStatus
 from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
-from app.rag.playbook import RecoveryPlaybookService
 from app.services.promise_service import PromiseTrackerService
-from app.services.recovery_service import RecoveryService
+from app.services.recovery_orchestrator import RecoveryOrchestratorService
 
 
 def print_banner(text: str):
@@ -55,7 +55,7 @@ def main():
         )
 
     promise_service = PromiseTrackerService(db)
-    recovery_service = RecoveryService(db)
+    recovery_service = RecoveryOrchestratorService(db)
 
     # -------------------------------------------------------------------------
     # PART 1: Initial Dispatch & Promise-to-Pay Creation
@@ -66,7 +66,6 @@ def main():
         name="Vikram Seth",
         email="vikram@example.com",
         phone="+919876543210",
-        segment=CustomerSegment.LOYAL,
     )
     tx1 = Transaction(
         id="tx_trace_01",

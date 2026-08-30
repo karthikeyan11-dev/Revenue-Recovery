@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.db import Base, get_db
+from app.database import Base, get_db
 from app.main import app
 
 # In-memory SQLite database setup for isolated test harness
@@ -30,7 +30,7 @@ def override_get_db():
 def setup_test_db(monkeypatch):
     Base.metadata.create_all(bind=test_engine)
     # Monkeypatch engine in db module so check_db_connection uses the test DB
-    import app.db as db_module
+    import app.database as db_module
 
     monkeypatch.setattr(db_module, "engine", test_engine)
     app.dependency_overrides[get_db] = override_get_db

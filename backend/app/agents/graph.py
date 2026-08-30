@@ -70,7 +70,9 @@ def policy_node(state: RecoveryAgentState) -> dict[str, Any]:
         payer_reliability_score=intel.payer_reliability_score if intel else 0.50,
     )
 
-    new_reproposal_count = reproposal_count + 1 if res.decision == PolicyDecision.REJECTED else reproposal_count
+    new_reproposal_count = (
+        reproposal_count + 1 if res.decision == PolicyDecision.REJECTED else reproposal_count
+    )
 
     return {
         "policy_decision": res.decision,
@@ -80,7 +82,9 @@ def policy_node(state: RecoveryAgentState) -> dict[str, Any]:
 
 
 def force_escalation_node(state: RecoveryAgentState) -> dict[str, Any]:
-    logger.warning("[LangGraph:force_escalation_node] Policy rejected re-proposal. Mandatory human escalation.")
+    logger.warning(
+        "[LangGraph:force_escalation_node] Policy rejected re-proposal. Mandatory human escalation."
+    )
     return {
         "policy_decision": PolicyDecision.ESCALATED,
         "policy_reasoning": "Policy rejected subsequent re-proposal attempt. Mandatory human escalation.",
@@ -92,10 +96,14 @@ def route_after_policy(state: RecoveryAgentState) -> str:
     reproposal_count = state.get("reproposal_count", 0)
     if decision == PolicyDecision.REJECTED:
         if reproposal_count <= 1:
-            logger.info("[LangGraph:route_after_policy] Policy REJECTED. Re-routing back to Strategist for exactly 1 re-proposal.")
+            logger.info(
+                "[LangGraph:route_after_policy] Policy REJECTED. Re-routing back to Strategist for exactly 1 re-proposal."
+            )
             return "strategist"
         else:
-            logger.warning("[LangGraph:route_after_policy] Policy REJECTED subsequent attempt. Forcing escalation.")
+            logger.warning(
+                "[LangGraph:route_after_policy] Policy REJECTED subsequent attempt. Forcing escalation."
+            )
             return "force_escalation"
     return "executor"
 

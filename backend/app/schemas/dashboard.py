@@ -38,9 +38,7 @@ class DashboardMetricsResponse(BaseModel):
     baseline_recovery_rate: float = Field(
         ge=0.0, le=100.0, description="Baseline recovery rate percentage"
     )
-    baseline_recovered_revenue: float = Field(
-        default=0.0, description="Baseline recovered INR"
-    )
+    baseline_recovered_revenue: float = Field(default=0.0, description="Baseline recovered INR")
     recovery_uplift_inr: float = Field(description="Net additional INR won over baseline")
     rate_uplift_percent: float = Field(default=0.0, description="Recovery rate uplift %")
     active_cases_count: int = Field(ge=0, description="Open and In-Progress recovery cases")
@@ -85,4 +83,3 @@ class DashboardComparisonResponse(BaseModel):
     ai: StrategyComparisonSummary
     uplift: UpliftMetrics
     key_findings: list[str] = Field(default=[])
-

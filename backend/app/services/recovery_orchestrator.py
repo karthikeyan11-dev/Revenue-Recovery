@@ -117,7 +117,11 @@ class RecoveryOrchestratorService:
                 step_str = "Active Outreach"
             f_reason = (
                 c.revenue_leak.payment_failure.failure_reason.value
-                if (c.revenue_leak and c.revenue_leak.payment_failure and c.revenue_leak.payment_failure.failure_reason)
+                if (
+                    c.revenue_leak
+                    and c.revenue_leak.payment_failure
+                    and c.revenue_leak.payment_failure.failure_reason
+                )
                 else None
             )
             f_code = (
@@ -257,7 +261,9 @@ class RecoveryOrchestratorService:
             case_priority = "MEDIUM"
 
         # Calculate Laplace smoothed payer reliability score
-        past_txs = case.customer.transactions if case.customer and case.customer.transactions else []
+        past_txs = (
+            case.customer.transactions if case.customer and case.customer.transactions else []
+        )
         total_tx = len(past_txs)
         success_tx = sum(1 for t in past_txs if t.status == TransactionStatus.SUCCESS)
         reliability = round((success_tx + 2) / (total_tx + 4), 4)
@@ -289,7 +295,11 @@ class RecoveryOrchestratorService:
 
         f_reason = (
             case.revenue_leak.payment_failure.failure_reason.value
-            if (case.revenue_leak and case.revenue_leak.payment_failure and case.revenue_leak.payment_failure.failure_reason)
+            if (
+                case.revenue_leak
+                and case.revenue_leak.payment_failure
+                and case.revenue_leak.payment_failure.failure_reason
+            )
             else None
         )
         f_code = (
@@ -436,8 +446,12 @@ class RecoveryOrchestratorService:
 
         # Customer Intelligence Audit Log
         if intel_out:
-            channels_str = ", ".join(intel_out.available_channels) if intel_out.available_channels else "EMAIL"
-            alternate_rails_str = ", ".join(intel_out.alternate_rails) if intel_out.has_alternate_rail else "None"
+            channels_str = (
+                ", ".join(intel_out.available_channels) if intel_out.available_channels else "EMAIL"
+            )
+            alternate_rails_str = (
+                ", ".join(intel_out.alternate_rails) if intel_out.has_alternate_rail else "None"
+            )
             self.recovery_repo.create_audit_log(
                 AuditLog(
                     id=f"log_{uuid.uuid4().hex[:14]}",

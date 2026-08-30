@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.integrations.razorpay.client import RazorpayClient
 from app.models.audit_log import AuditLog
 from app.models.communication_event import CommunicationEvent
-from app.models.customer import CommunicationChannel, Customer
+from app.models.customer import Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.promise_to_pay import PromiseToPay
 from app.models.recovery_action import RecoveryAction
@@ -18,23 +18,77 @@ from app.models.recovery_metrics import RecoveryMetricsRecord
 from app.models.revenue_leak import RevenueLeak
 from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
 from app.models.webhook_event import RazorpayWebhookEvent
-from app.repositories.customer_repository import CustomerRepository
-from app.repositories.transaction_repository import TransactionRepository
+from app.repositories.customer import CustomerRepository
+from app.repositories.transaction import TransactionRepository
 
 logger = logging.getLogger("app.generators.synthetic")
 
 FIRST_NAMES = [
-    "Aarav", "Vivaan", "Aditya", "Vihaan", "Arjun", "Sai", "Reyansh", "Ayaan",
-    "Krishna", "Ishaan", "Shaurya", "Atharva", "Advik", "Pranav", "Advaith",
-    "Aanya", "Diya", "Saanvi", "Ananya", "Aadhya", "Pari", "Chiara", "Myra",
-    "Riya", "Isha", "Kavya", "Anika", "Navya", "Sneha", "Tanvi", "Pooja",
-    "Rahul", "Rohan", "Vikram", "Siddharth", "Karthik", "Manish", "Amit", "Dev",
+    "Aarav",
+    "Vivaan",
+    "Aditya",
+    "Vihaan",
+    "Arjun",
+    "Sai",
+    "Reyansh",
+    "Ayaan",
+    "Krishna",
+    "Ishaan",
+    "Shaurya",
+    "Atharva",
+    "Advik",
+    "Pranav",
+    "Advaith",
+    "Aanya",
+    "Diya",
+    "Saanvi",
+    "Ananya",
+    "Aadhya",
+    "Pari",
+    "Chiara",
+    "Myra",
+    "Riya",
+    "Isha",
+    "Kavya",
+    "Anika",
+    "Navya",
+    "Sneha",
+    "Tanvi",
+    "Pooja",
+    "Rahul",
+    "Rohan",
+    "Vikram",
+    "Siddharth",
+    "Karthik",
+    "Manish",
+    "Amit",
+    "Dev",
 ]
 
 LAST_NAMES = [
-    "Sharma", "Verma", "Patel", "Mehta", "Gupta", "Singh", "Kumar", "Rao",
-    "Nair", "Iyer", "Reddy", "Chopra", "Joshi", "Bhat", "Deshmukh", "Kulkarni",
-    "Agarwal", "Banerjee", "Chatterjee", "Mukherjee", "Sen", "Bose", "Dutta",
+    "Sharma",
+    "Verma",
+    "Patel",
+    "Mehta",
+    "Gupta",
+    "Singh",
+    "Kumar",
+    "Rao",
+    "Nair",
+    "Iyer",
+    "Reddy",
+    "Chopra",
+    "Joshi",
+    "Bhat",
+    "Deshmukh",
+    "Kulkarni",
+    "Agarwal",
+    "Banerjee",
+    "Chatterjee",
+    "Mukherjee",
+    "Sen",
+    "Bose",
+    "Dutta",
 ]
 
 
@@ -47,17 +101,13 @@ class SyntheticDataGenerator:
     def generate_customers(cls, count: int = 150) -> list[Customer]:
         customers = []
 
-        for idx in range(count):
+        for _idx in range(count):
             first = random.choice(FIRST_NAMES)
             last = random.choice(LAST_NAMES)
             name = f"{first} {last}"
             email = f"{first.lower()}.{last.lower()}{random.randint(10, 999)}@example.com"
             # 90% have phone numbers, 10% email only to test factual channel availability
-            phone = (
-                f"+9198{random.randint(10000000, 99999999)}"
-                if random.random() < 0.90
-                else None
-            )
+            phone = f"+9198{random.randint(10000000, 99999999)}" if random.random() < 0.90 else None
 
             customers.append(
                 Customer(
@@ -237,7 +287,14 @@ class SyntheticDataGenerator:
             ("hist_ins_1", "INSUFFICIENT_FUNDS", "RETRY", "NONE", "SUCCESS", 8500.0),
             ("hist_ins_2", "INSUFFICIENT_FUNDS", "SEND_WHATSAPP", "WHATSAPP", "SUCCESS", 3200.0),
             ("hist_ins_3", "INSUFFICIENT_FUNDS", "RETRY", "NONE", "SUCCESS", 12000.0),
-            ("hist_ins_4", "INSUFFICIENT_FUNDS", "SEND_PAYMENT_LINK", "WHATSAPP", "SUCCESS", 4100.0),
+            (
+                "hist_ins_4",
+                "INSUFFICIENT_FUNDS",
+                "SEND_PAYMENT_LINK",
+                "WHATSAPP",
+                "SUCCESS",
+                4100.0,
+            ),
             ("hist_ins_5", "INSUFFICIENT_FUNDS", "RETRY", "NONE", "SUCCESS", 9500.0),
             ("hist_ins_6", "INSUFFICIENT_FUNDS", "RETRY", "NONE", "FAILED", 0.0),
             # USER_DROPOFF
@@ -264,7 +321,14 @@ class SyntheticDataGenerator:
             # AUTHENTICATION_FAILED
             ("hist_ath_1", "AUTHENTICATION_FAILED", "SEND_WHATSAPP", "WHATSAPP", "SUCCESS", 3900.0),
             ("hist_ath_2", "AUTHENTICATION_FAILED", "SEND_WHATSAPP", "WHATSAPP", "SUCCESS", 7200.0),
-            ("hist_ath_3", "AUTHENTICATION_FAILED", "SEND_PAYMENT_LINK", "WHATSAPP", "SUCCESS", 2100.0),
+            (
+                "hist_ath_3",
+                "AUTHENTICATION_FAILED",
+                "SEND_PAYMENT_LINK",
+                "WHATSAPP",
+                "SUCCESS",
+                2100.0,
+            ),
             ("hist_ath_4", "AUTHENTICATION_FAILED", "SEND_WHATSAPP", "WHATSAPP", "SUCCESS", 5400.0),
             ("hist_ath_5", "AUTHENTICATION_FAILED", "SEND_WHATSAPP", "WHATSAPP", "FAILED", 0.0),
             # LIMIT_EXCEEDED
@@ -276,6 +340,7 @@ class SyntheticDataGenerator:
         ]
         try:
             from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
+
             for cid, reason, action, chan, outc, rec_amt in precedents:
                 RecoveryPlaybookService.insert_resolved_case(
                     case_id=cid,

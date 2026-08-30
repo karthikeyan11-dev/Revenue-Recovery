@@ -44,6 +44,7 @@ class LLMClient:
 
         # Check circuit breaker (if rate-limited recently, use contextual fallback immediately)
         import time
+
         if time.time() < cls._circuit_broken_until:
             return fallback_text
 

@@ -33,12 +33,8 @@ def list_cases(
     status_filter: CaseStatus | None = Query(
         None, alias="status", description="Filter by case status"
     ),
-    priority: str | None = Query(
-        None, description="Filter by priority (HIGH, MEDIUM, LOW)"
-    ),
-    search: str | None = Query(
-        None, description="Search by Case ID, Customer name, or email"
-    ),
+    priority: str | None = Query(None, description="Filter by priority (HIGH, MEDIUM, LOW)"),
+    search: str | None = Query(None, description="Search by Case ID, Customer name, or email"),
     date_from: datetime | None = Query(
         None, description="Filter cases created on or after this timestamp"
     ),

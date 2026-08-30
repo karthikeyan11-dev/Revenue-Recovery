@@ -92,7 +92,10 @@ class ActionExecutor:
         is_whatsapp = (
             action_type == ActionType.SEND_WHATSAPP
             or target_channel in ["WHATSAPP", CommunicationChannel.WHATSAPP.value]
-            or (action_type in [ActionType.SEND_PAYMENT_LINK, ActionType.OFFER_INCENTIVE] and target_channel != "EMAIL")
+            or (
+                action_type in [ActionType.SEND_PAYMENT_LINK, ActionType.OFFER_INCENTIVE]
+                and target_channel != "EMAIL"
+            )
         )
 
         # 2. WhatsApp Interactive Outreach (1-Click UPI Payment Link)
@@ -112,7 +115,9 @@ class ActionExecutor:
             if coupon:
                 msg_content += f" Use code {coupon} for {incentive_percent:.0f}% off to complete payment via UPI: https://rzp.io/l/recov"
             else:
-                msg_content += " Click here to complete 1-click Razorpay UPI payment: https://rzp.io/l/recov"
+                msg_content += (
+                    " Click here to complete 1-click Razorpay UPI payment: https://rzp.io/l/recov"
+                )
 
             return ExecutionResult(
                 outcome=ActionOutcome.SUCCESS if recovered else ActionOutcome.FAILED,

@@ -125,7 +125,9 @@ class UnifiedMetricsEngine:
         )
         escalated_count = sum(1 for c in all_cases if c.status == CaseStatus.ESCALATED)
         recovered_count = sum(
-            1 for c in all_cases if c.status == CaseStatus.RECOVERED or (c.recovered_amount or 0) > 0
+            1
+            for c in all_cases
+            if c.status == CaseStatus.RECOVERED or (c.recovered_amount or 0) > 0
         )
         failed_count = sum(1 for c in all_cases if c.status == CaseStatus.FAILED)
         blocked_count = sum(1 for c in all_cases if c.status == CaseStatus.BLOCKED)
@@ -233,24 +235,21 @@ class UnifiedMetricsEngine:
         failure_reasons.sort(key=lambda x: x.cases_count, reverse=True)
 
         # 4. Top Actions Breakdown
-        act_query = (
-            self.db.query(
-                RecoveryAction.proposed_action,
-                func.count(RecoveryAction.id).label("attempts"),
-                func.sum(
-                    case(
-                        (
-                            (RecoveryAction.outcome == ActionOutcome.SUCCESS)
-                            | (RecoveryCase.status == CaseStatus.RECOVERED),
-                            1,
-                        ),
-                        else_=0,
-                    )
-                ).label("successes"),
-                func.sum(func.coalesce(RecoveryCase.recovered_amount, 0.0)).label("rec_amt"),
-            )
-            .join(RecoveryCase, RecoveryAction.case_id == RecoveryCase.id)
-        )
+        act_query = self.db.query(
+            RecoveryAction.proposed_action,
+            func.count(RecoveryAction.id).label("attempts"),
+            func.sum(
+                case(
+                    (
+                        (RecoveryAction.outcome == ActionOutcome.SUCCESS)
+                        | (RecoveryCase.status == CaseStatus.RECOVERED),
+                        1,
+                    ),
+                    else_=0,
+                )
+            ).label("successes"),
+            func.sum(func.coalesce(RecoveryCase.recovered_amount, 0.0)).label("rec_amt"),
+        ).join(RecoveryCase, RecoveryAction.case_id == RecoveryCase.id)
         if d_from:
             act_query = act_query.filter(RecoveryCase.created_at >= d_from)
         if d_to:
@@ -301,13 +300,14 @@ class UnifiedMetricsEngine:
             b_cases = [
                 c
                 for c in all_cases
-                if c.resolved_at
-                and b_min <= (c.resolved_at - c.created_at).total_seconds() < b_max
+                if c.resolved_at and b_min <= (c.resolved_at - c.created_at).total_seconds() < b_max
             ]
             b_cnt = len(b_cases)
             b_rec = sum(c.recovered_amount for c in b_cases)
             b_risk = sum(c.revenue_leak.amount for c in b_cases if c.revenue_leak)
-            b_rate = round((b_rec / b_risk * 100.0), 1) if b_risk > 0 else (100.0 if b_cnt > 0 else 0.0)
+            b_rate = (
+                round((b_rec / b_risk * 100.0), 1) if b_risk > 0 else (100.0 if b_cnt > 0 else 0.0)
+            )
 
             time_to_recover_buckets.append(
                 TimeToRecoverBucketItem(
@@ -381,16 +381,14 @@ class UnifiedMetricsEngine:
             )
 
         # 8. Performance Highlights
-        high_value_rec = sum(
-            e["ai_rec"]
-            for e in case_evals
-            if e["risk_amt"] >= 20000.0
-        )
+        high_value_rec = sum(e["ai_rec"] for e in case_evals if e["risk_amt"] >= 20000.0)
         top_action_name = top_actions[0].action if top_actions else "Send Whatsapp"
         top_action_rate = top_actions[0].success_rate_percent if top_actions else 62.9
         top_fail_name = failure_reasons[0].display_name if failure_reasons else "Bank Declined"
         highest_seg = customer_segments[0].display_name if customer_segments else "Technical Issues"
-        hv_percent = round((high_value_rec / total_recovered * 100.0), 1) if total_recovered > 0 else 0.0
+        hv_percent = (
+            round((high_value_rec / total_recovered * 100.0), 1) if total_recovered > 0 else 0.0
+        )
 
         highlights = PerformanceHighlights(
             ai_extra_revenue=uplift_inr,
@@ -548,11 +546,7 @@ class UnifiedMetricsEngine:
         baseline_cost = round(counts_dict["total"] * 0.50, 2)
         base_rec = kpis.baseline_recovered_revenue
         at_risk = kpis.total_revenue_at_risk
-        base_roi = (
-            round(((base_rec - baseline_cost) / at_risk * 100.0), 2)
-            if at_risk > 0
-            else 0.0
-        )
+        base_roi = round(((base_rec - baseline_cost) / at_risk * 100.0), 2) if at_risk > 0 else 0.0
         base_cases_rec = int(round(counts_dict["total"] * (kpis.baseline_recovery_rate / 100.0)))
 
         return DashboardComparisonResponse(
@@ -585,4 +579,3 @@ class UnifiedMetricsEngine:
                 f"Autonomous policy gate executed with {kpis.policy_gates_triggered} protective interventions.",
             ],
         )
-

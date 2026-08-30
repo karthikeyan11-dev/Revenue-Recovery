@@ -1,7 +1,6 @@
 # AI Revenue Recovery Orchestrator
 
 [![CI](https://github.com/your-username/revenue-recovery/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/revenue-recovery/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![React + Vite](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61dafb.svg)](https://vitejs.dev/)
 [![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
@@ -17,8 +16,6 @@ An autonomous, policy-governed AI system that detects revenue at risk from faile
 ---
 
 ## 2. System Architecture
-
-![System Architecture Diagram](docs/architecture.png)
 
 ```
                     ┌──────────────────┐
@@ -119,7 +116,6 @@ An autonomous, policy-governed AI system that detects revenue at risk from faile
    cd backend
    source venv/bin/activate
    pip install -r requirements.txt
-   alembic upgrade head
    uvicorn app.main:app --reload --port 8000
    ```
 
@@ -132,17 +128,18 @@ An autonomous, policy-governed AI system that detects revenue at risk from faile
 
 ---
 
-## 6. Live Demo Guide
-
-For a step-by-step 5-minute presentation script covering data generation, baseline comparison, AI recovery uplift, and policy engine demonstrations, refer to [docs/demo-script.md](docs/demo-script.md).
+## 6. Live Demo Flow
+1. **Generate Data:** Click `1. Generate Data` on the Dashboard to seed 100 transactions with failure context.
+2. **Run Baseline:** Click `2. Run Baseline` to compute the naive retry benchmark.
+3. **Run AI Orchestrator:** Click `3. Run AI Orchestrator` to execute the full LangGraph pipeline with policy rules, RAG retrieval, and empirical ROI measurement.
 
 ---
 
 ## 7. Verification & Test Suite
 
-Run the full backend test suite (35 tests) and verification scripts:
+Run the full backend test suite (51 tests) and verification scripts:
 ```bash
-# Run full unit & integration test suite (35 passing tests)
+# Run full unit & integration test suite (51 passing tests)
 cd backend && ./venv/bin/pytest -v
 
 # Run whole-system end-to-end trace verification

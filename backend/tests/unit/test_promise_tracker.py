@@ -7,7 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base
 from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
-from app.models.customer import CommunicationChannel, Customer
+from app.models.customer import Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.promise_to_pay import PromiseStatus, PromiseToPay
 from app.models.recovery_case import CaseStatus, RecoveryCase
