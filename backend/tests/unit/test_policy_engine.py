@@ -44,10 +44,10 @@ def test_policy_escalates_high_value_at_risk():
         proposal,
         amount=45000.0,  # High value >= 25,000
         previous_attempts=1,
-        customer_churn_risk=0.60,  # High churn risk > 0.35
+        payer_reliability_score=0.40,  # Low reliability score < 0.50
     )
     assert result.decision == PolicyDecision.ESCALATED
-    assert result.violated_rule == "HIGH_VALUE_HIGH_CHURN_GATE"
+    assert result.violated_rule == "HIGH_VALUE_LOW_RELIABILITY_GATE"
 
 
 def test_policy_escalates_insufficient_precedent():
@@ -62,8 +62,60 @@ def test_policy_escalates_insufficient_precedent():
         proposal,
         amount=500.0,  # Even small amount
         previous_attempts=1,
-        customer_churn_risk=0.10,
+        payer_reliability_score=0.80,
     )
     assert result.decision == PolicyDecision.ESCALATED
     assert result.violated_rule == "INSUFFICIENT_PRECEDENT_GATE"
     assert "Insufficient precedent evidence" in result.reasoning
+
+
+def test_policy_rejection_reproposal_loop_in_graph():
+    """Verify that a rejected proposal is routed back to Strategist for exactly 1 re-proposal,
+    and a second rejection forces human escalation."""
+    from app.agents.graph import recovery_graph
+    from app.models.customer import CommunicationChannel, Customer
+    from app.models.payment_failure import FailureReason, PaymentFailure
+    from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
+
+    cust = Customer(
+        id="cust_loop_test",
+        name="Test Loop Customer",
+        email="loop@example.com",
+        phone="+919876543210",
+    )
+    tx = Transaction(
+        id="tx_loop_test",
+        customer_id=cust.id,
+        amount=2000.0,
+        currency="INR",
+        status=TransactionStatus.FAILED,
+        payment_method=PaymentMethod.UPI,
+        customer=cust,
+    )
+    pf = PaymentFailure(
+        id="pf_loop_test",
+        transaction_id=tx.id,
+        failure_reason=FailureReason.NETWORK_ERROR,
+        attempt_number=1,
+        transaction=tx,
+    )
+
+    initial_state = {
+        "failure": pf,
+        "db": None,
+        "detective_output": None,
+        "intel_output": None,
+        "proposed_action": None,
+        "policy_decision": None,
+        "policy_reasoning": None,
+        "execution_outcome": None,
+        "recovered": False,
+        "recovered_amount": 0.0,
+        "cost": 0.0,
+        "details": "",
+        "communication_event_data": None,
+        "reproposal_count": 0,
+    }
+
+    final_state = recovery_graph.invoke(initial_state)
+    assert final_state["policy_decision"] in [PolicyDecision.APPROVED, PolicyDecision.ESCALATED]

@@ -1,79 +1,89 @@
 import React, { useState } from 'react';
-import { Activity, RefreshCw } from 'lucide-react';
-import { useAgentActivityFeed } from '../hooks/useAgentActivityFeed';
-import { ActivityFeed } from '../components/ActivityFeed';
-import type { AgentActivityItem } from '../../../types/agent';
+import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { Button } from '../../../components/ui/button';
+import { AgentActivityFeed } from '../components/AgentActivityFeed';
+import { AgentActivityFilters } from '../components/AgentActivityFilters';
+import { AgentActivityStatsBar } from '../components/AgentActivityStatsBar';
+import { AgentSidebarList } from '../components/AgentSidebarList';
+import { useGetAgentActivity } from '../hooks/useGetAgentActivity';
+import { LogoLoader } from '../../../components/common/LogoLoader';
+import type { AgentActivityFiltersState } from '../types/agent-activity.types';
+
+const INITIAL_FILTERS: AgentActivityFiltersState = {
+  agent: 'all',
+  status: 'all',
+  time_range: 'all',
+  search: '',
+};
 
 export const AgentActivityContainer: React.FC = () => {
-  const [selectedAgent, setSelectedAgent] = useState<string>('ALL');
-  const [filterDecision, setFilterDecision] = useState<string>('ALL');
+  const [filters, setFilters] = useState<AgentActivityFiltersState>(INITIAL_FILTERS);
+  const { data, isLoading, isError, error, refetch } = useGetAgentActivity(filters);
 
-  const { data: activityData, isLoading, isFetching, refetch } = useAgentActivityFeed(60);
+  const handleFilterChange = (key: keyof AgentActivityFiltersState, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
 
-  const activities: AgentActivityItem[] = activityData?.activities || [];
+  const handleResetFilters = () => {
+    setFilters(INITIAL_FILTERS);
+  };
 
-  const filteredActivities = activities.filter((act: AgentActivityItem) => {
-    if (selectedAgent !== 'ALL' && act.agent !== selectedAgent) return false;
-    if (filterDecision === 'POLICY_REJECTIONS' && act.decision !== 'REJECTED') return false;
-    if (filterDecision === 'POLICY_ESCALATIONS' && act.decision !== 'ESCALATED') return false;
-    if (filterDecision === 'RECOVERIES' && act.decision !== 'RECOVERED') return false;
-    return true;
-  });
+  const handleSelectAgent = (agentName: string) => {
+    setFilters((prev) => ({ ...prev, agent: agentName }));
+  };
+
+  if (isError) {
+    return (
+      <div className="p-8 bg-white border border-rose-200 rounded-xl shadow-sm text-center space-y-4">
+        <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+          <AlertTriangle className="w-6 h-6" />
+        </div>
+        <div className="text-base font-semibold text-slate-900">Failed to load Agent Activity</div>
+        <p className="text-xs text-slate-500 max-w-md mx-auto">
+          {(error as Error)?.message || 'An unexpected error occurred.'}
+        </p>
+        <Button onClick={() => refetch()} variant="outline" size="sm" className="space-x-2">
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Retry Connection</span>
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Header & Filter Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-[#0c2340]/90 border border-slate-800 backdrop-blur shadow-xl">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
-            <Activity className="w-5 h-5 text-brand-400" />
-            <span>Multi-Agent Live Activity Feed & Chain-of-Thought Audit</span>
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Real-time trace logs showing Revenue Detective, Customer Intelligence, Recovery Strategist, and Policy Engine decisions with Laplace smoothed confidence metrics.
-          </p>
+    <div className="space-y-6">
+      {/* 1. Headline Telemetry Bar */}
+      {data?.stats && <AgentActivityStatsBar stats={data.stats} />}
+
+      {/* 2. Main Content Grid (Left Agent List + Right Activity Stream) */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Left Sub-Sidebar */}
+        <div className="lg:col-span-1">
+          <AgentSidebarList
+            agents={data?.stats.agent_statuses || []}
+            selectedAgent={filters.agent}
+            onSelectAgent={handleSelectAgent}
+          />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Agent Selector */}
-          <select
-            value={selectedAgent}
-            onChange={(e) => setSelectedAgent(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-brand-500"
-          >
-            <option value="ALL">All Agents</option>
-            <option value="Revenue Detective">Revenue Detective</option>
-            <option value="Customer Intelligence">Customer Intelligence</option>
-            <option value="Recovery Strategist">Recovery Strategist</option>
-            <option value="Policy Engine">Policy Engine</option>
-            <option value="Action Executor">Action Executor</option>
-          </select>
+        {/* Right Feed Area */}
+        <div className="lg:col-span-3 space-y-4">
+          <AgentActivityFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onResetFilters={handleResetFilters}
+          />
 
-          {/* Decision Outcome Filter */}
-          <select
-            value={filterDecision}
-            onChange={(e) => setFilterDecision(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-brand-500"
-          >
-            <option value="ALL">All Outcomes</option>
-            <option value="POLICY_REJECTIONS">Policy Rejected</option>
-            <option value="POLICY_ESCALATIONS">Human Escalations</option>
-            <option value="RECOVERIES">Recovered / Approved</option>
-          </select>
-
-          <button
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition disabled:opacity-50"
-            title="Refresh stream"
-          >
-            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-          </button>
+          {isLoading ? (
+            <LogoLoader variant="table" label="Streaming live agent decision ledger..." />
+          ) : (
+            <AgentActivityFeed
+              activities={data?.activities || []}
+              totalEvents={data?.total_events || 0}
+            />
+          )}
         </div>
       </div>
-
-      {/* Activity Feed List */}
-      <ActivityFeed activities={filteredActivities} isLoading={isLoading} />
     </div>
   );
 };

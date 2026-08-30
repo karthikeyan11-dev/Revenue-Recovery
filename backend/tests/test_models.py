@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.db import Base
 from app.models.audit_log import AuditLog
 from app.models.communication_event import CommunicationEvent, SimulatedResponse
-from app.models.customer import CommunicationChannel, Customer, CustomerSegment
+from app.models.customer import CommunicationChannel, Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.promise_to_pay import PromiseStatus, PromiseToPay
 from app.models.recovery_action import ActionOutcome, ActionType, PolicyDecision, RecoveryAction
@@ -39,10 +39,6 @@ def test_complete_domain_model_persistence(db_session):
         name="Aarav Sharma",
         email="aarav@example.com",
         phone="+919876543210",
-        segment=CustomerSegment.HIGH_VALUE,
-        ltv=45000.0,
-        churn_probability=0.15,
-        preferred_channel=CommunicationChannel.WHATSAPP,
     )
     db_session.add(customer)
     db_session.commit()

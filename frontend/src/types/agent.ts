@@ -24,11 +24,15 @@ export interface RevenueDetectiveOutput {
 
 export interface CustomerIntelligenceOutput {
   customer_id: string;
-  segment: string;
-  ltv: number;
-  churn_probability: number;
-  preferred_channel: string;
-  recovery_probability: number;
+  payer_reliability_score: number;
+  total_past_transactions?: number;
+  successful_past_transactions?: number;
+  timing_band?: string;
+  hours_since_failure?: number;
+  recent_failure_count?: number;
+  has_alternate_rail?: boolean;
+  alternate_rails?: string[];
+  available_channels: string[];
   confidence: number;
   insights: string;
   precedent_sample_size?: number;

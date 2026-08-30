@@ -13,7 +13,6 @@ class PromiseToPaySummary(BaseModel):
     customer_id: str | None = None
     customer_name: str = "Unknown"
     customer_email: str = "unknown@example.com"
-    customer_segment: str = "REGULAR"
     committed_amount: float = Field(ge=0.0)
     committed_date: datetime
     status: PromiseStatus

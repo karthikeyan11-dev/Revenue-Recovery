@@ -4,6 +4,11 @@ from app.schemas.agents import (
 )
 from app.schemas.analyst import BaselineComparisonResult, StrategyMetrics
 from app.schemas.customer import CustomerIntelligenceOutput
+from app.schemas.dashboard import (
+    DashboardMetricsResponse,
+    RecoveryComparisonChartItem,
+)
+from app.schemas.detective import RevenueDetectiveOutput
 from app.schemas.recovery import (
     CaseActionItem,
     CasesListResponse,
@@ -11,11 +16,6 @@ from app.schemas.recovery import (
     RecoveryCaseDetail,
     RecoveryCaseSummary,
 )
-from app.schemas.dashboard import (
-    DashboardMetricsResponse,
-    RecoveryComparisonChartItem,
-)
-from app.schemas.detective import RevenueDetectiveOutput
 from app.schemas.run import (
     GenerateDataRequest,
     GenerateDataResponse,

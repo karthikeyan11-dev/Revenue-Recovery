@@ -34,14 +34,26 @@ export const HealthStatusCard: React.FC = () => {
           className="inline-flex items-center space-x-2 text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition-colors disabled:opacity-50"
           id="btn-refresh-health"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? (
+            <img
+              src="/revenue-recovery-logo-alone.png"
+              alt="Loading"
+              className="w-3.5 h-3.5 animate-logo-pulse object-contain inline-block"
+            />
+          ) : (
+            <RefreshCw className="w-3.5 h-3.5" />
+          )}
           <span>{isFetching ? 'Checking...' : 'Check Status'}</span>
         </button>
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8 text-slate-400">
-          <RefreshCw className="w-6 h-6 animate-spin mr-3 text-brand-400" />
+          <img
+            src="/revenue-recovery-logo-alone.png"
+            alt="Loading"
+            className="w-8 h-8 object-contain animate-logo-pulse mr-3"
+          />
           <span>Verifying orchestrator backend connection...</span>
         </div>
       ) : error ? (

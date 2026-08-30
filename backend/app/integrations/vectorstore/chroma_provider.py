@@ -27,8 +27,10 @@ class RecoveryPlaybookService:
     @classmethod
     def get_client(cls) -> chromadb.ClientAPI:
         if cls._client is None:
+            chroma_path = Path(os.environ.get("CHROMA_PERSIST_DIR", str(BASE_DIR / "data" / "chroma_db")))
+            chroma_path.mkdir(parents=True, exist_ok=True)
             cls._client = chromadb.PersistentClient(
-                path=str(CHROMA_DIR),
+                path=str(chroma_path),
                 settings=ChromaSettings(anonymized_telemetry=False),
             )
         return cls._client
@@ -47,12 +49,12 @@ class RecoveryPlaybookService:
     def insert_resolved_case(
         cls,
         case_id: str,
-        segment: str,
         failure_reason: str,
         action_taken: str,
         channel: str | None,
         outcome: str,
         recovered_amount: float,
+        segment: str | None = None,
     ) -> None:
         """
         Inserts or updates a resolved recovery case in ChromaDB recovery_playbook collection.
@@ -62,14 +64,13 @@ class RecoveryPlaybookService:
         is_rec = bool(outcome.upper() in ["SUCCESS", "RECOVERED"])
 
         doc_text = (
-            f"Segment: {segment} | Failure Reason: {failure_reason} | "
+            f"Failure Reason: {failure_reason} | "
             f"Action Taken: {action_taken} | Channel: {chan} | "
             f"Outcome: {outcome} | Recovered Amount: INR {recovered_amount:,.2f}"
         )
 
         metadata = {
             "case_id": str(case_id),
-            "segment": str(segment),
             "failure_reason": str(failure_reason),
             "action_taken": str(action_taken),
             "channel": str(chan),
@@ -77,6 +78,8 @@ class RecoveryPlaybookService:
             "recovered_amount": float(recovered_amount),
             "is_recovered": is_rec,
         }
+        if segment:
+            metadata["segment"] = str(segment)
 
         try:
             collection.upsert(
@@ -93,9 +96,9 @@ class RecoveryPlaybookService:
     @classmethod
     def query_similar_cases(
         cls,
-        segment: str,
         failure_reason: str,
         leak_type: str | None = None,
+        segment: str | None = None,
         k: int = 5,
     ) -> list[dict[str, Any]]:
         """
@@ -110,7 +113,7 @@ class RecoveryPlaybookService:
             return []
 
         query_text = (
-            f"Segment: {segment} | Failure Reason: {failure_reason} | "
+            f"Failure Reason: {failure_reason} | "
             f"Leak Type: {leak_type or 'TRANSACTION_FAILURE'}"
         )
 
@@ -128,7 +131,7 @@ class RecoveryPlaybookService:
                     retrieved.append(dict(meta))
 
             logger.info(
-                f"[ChromaDB:query_similar_cases] Retrieved {len(retrieved)} cases for segment '{segment}', reason '{failure_reason}'"
+                f"[ChromaDB:query_similar_cases] Retrieved {len(retrieved)} cases for reason '{failure_reason}' (leak_type='{leak_type}')"
             )
             return retrieved
 
@@ -141,6 +144,75 @@ class RecoveryPlaybookService:
         """Returns the total number of resolved cases stored in recovery_playbook."""
         collection = cls.get_collection()
         return collection.count()
+
+    @classmethod
+    def get_playbook_stats(cls) -> dict[str, Any]:
+        """Returns knowledge accumulation stats and detailed breakdown for the recovery playbook."""
+        collection = cls.get_collection()
+        total_count = collection.count()
+        if total_count == 0:
+            return {
+                "total_cases": 0,
+                "baseline_precedents": 0,
+                "learned_cases": 0,
+                "failure_reasons": [],
+                "outcomes": {"recovered_count": 0, "failed_or_escalated_count": 0},
+                "actions": [],
+            }
+
+        try:
+            records = collection.get(include=["metadatas"])
+            metas = records.get("metadatas", []) or []
+            learned = sum(1 for m in metas if str(m.get("case_id", "")).startswith("case_"))
+            baseline = sum(1 for m in metas if str(m.get("case_id", "")).startswith("hist_"))
+
+            from collections import Counter
+            reason_counts = Counter(str(m.get("failure_reason", "UNKNOWN")) for m in metas)
+            outcome_counts = Counter(str(m.get("outcome", "FAILED")).upper() for m in metas)
+            action_counts = Counter(str(m.get("action_taken", "RETRY")) for m in metas)
+
+            recovered_c = outcome_counts.get("RECOVERED", 0) + outcome_counts.get("SUCCESS", 0)
+            failed_c = sum(v for k, v in outcome_counts.items() if k not in ["RECOVERED", "SUCCESS"])
+
+            reasons_list = [
+                {
+                    "failure_reason": r,
+                    "display_name": r.replace("_", " ").title(),
+                    "count": cnt,
+                }
+                for r, cnt in reason_counts.most_common()
+            ]
+
+            actions_list = [
+                {
+                    "action": a,
+                    "display_name": a.replace("_", " ").title(),
+                    "count": cnt,
+                }
+                for a, cnt in action_counts.most_common()
+            ]
+
+            return {
+                "total_cases": total_count,
+                "baseline_precedents": baseline,
+                "learned_cases": learned,
+                "failure_reasons": reasons_list,
+                "outcomes": {
+                    "recovered_count": recovered_c,
+                    "failed_or_escalated_count": failed_c,
+                },
+                "actions": actions_list,
+            }
+        except Exception as e:
+            logger.error(f"[ChromaDB:get_playbook_stats] Failed to fetch stats: {e}")
+            return {
+                "total_cases": total_count,
+                "baseline_precedents": 0,
+                "learned_cases": 0,
+                "failure_reasons": [],
+                "outcomes": {"recovered_count": 0, "failed_or_escalated_count": 0},
+                "actions": [],
+            }
 
     @classmethod
     def reset_playbook(cls) -> None:

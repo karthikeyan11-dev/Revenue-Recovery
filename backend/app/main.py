@@ -6,8 +6,7 @@ from fastapi import FastAPI
 
 from app.api import api_router, configure_middleware
 from app.config import settings
-from app.database import Base, check_db_connection, engine
-from app.schemas.system import HealthResponse, RootResponse
+from app.database import Base, engine
 
 
 # Structured Logging Setup

@@ -1,15 +1,6 @@
 from enum import Enum
 
 
-class CustomerSegment(str, Enum):
-    HIGH_VALUE = "HIGH_VALUE"
-    REGULAR = "REGULAR"
-    LOYAL = "LOYAL"
-    AT_RISK = "AT_RISK"
-    CHURNING = "CHURNING"
-    LOW_VALUE = "LOW_VALUE"
-
-
 class CommunicationChannel(str, Enum):
     WHATSAPP = "WHATSAPP"
     EMAIL = "EMAIL"

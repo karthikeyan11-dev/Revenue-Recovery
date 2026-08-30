@@ -2,12 +2,12 @@ import pytest
 
 from app.agents.recovery_analyst import RecoveryAnalystAgent
 from app.agents.recovery_strategist import RecoveryStrategistAgent
-from app.models.customer import CommunicationChannel, CustomerSegment
+from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
+from app.models.customer import CommunicationChannel
 from app.models.payment_failure import FailureReason
 from app.models.recovery_action import PolicyDecision
 from app.models.revenue_leak import LeakType
 from app.policy.engine import PolicyEngine
-from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
 from app.schemas.customer import CustomerIntelligenceOutput
 from app.schemas.detective import RevenueDetectiveOutput
 
@@ -24,7 +24,6 @@ def test_chroma_playbook_cold_start():
     """Test empty playbook behavior."""
     assert RecoveryPlaybookService.get_playbook_count() == 0
     results = RecoveryPlaybookService.query_similar_cases(
-        segment="LOYAL",
         failure_reason="NETWORK_ERROR",
         k=5,
     )
@@ -35,7 +34,6 @@ def test_chroma_playbook_insertion_and_query():
     """Test inserting resolved cases and querying similar precedents."""
     RecoveryPlaybookService.insert_resolved_case(
         case_id="case_001",
-        segment="LOYAL",
         failure_reason="NETWORK_ERROR",
         action_taken="RETRY",
         channel="NONE",
@@ -44,7 +42,6 @@ def test_chroma_playbook_insertion_and_query():
     )
     RecoveryPlaybookService.insert_resolved_case(
         case_id="case_002",
-        segment="LOYAL",
         failure_reason="NETWORK_ERROR",
         action_taken="RETRY",
         channel="NONE",
@@ -55,7 +52,6 @@ def test_chroma_playbook_insertion_and_query():
     assert RecoveryPlaybookService.get_playbook_count() == 2
 
     results = RecoveryPlaybookService.query_similar_cases(
-        segment="LOYAL",
         failure_reason="NETWORK_ERROR",
         k=5,
     )
@@ -77,11 +73,8 @@ def test_strategist_cold_start_insufficient_precedent():
     )
     intel_out = CustomerIntelligenceOutput(
         customer_id="cust_101",
-        segment=CustomerSegment.LOYAL,
-        ltv=45000.0,
-        churn_probability=0.10,
-        preferred_channel=CommunicationChannel.WHATSAPP,
-        recovery_probability=0.88,
+        payer_reliability_score=0.85,
+        available_channels=["WHATSAPP", "SMS", "EMAIL"],
         confidence=0.70,
         insights="Loyal customer",
     )
@@ -112,7 +105,6 @@ def test_strategist_sufficient_precedent_and_analyst_write_back():
         outcome = "SUCCESS" if i < 5 else "FAILED"
         RecoveryAnalystAgent.write_back_resolved_case(
             case_id=f"hist_case_{i}",
-            segment="HIGH_VALUE",
             failure_reason="INSUFFICIENT_FUNDS",
             action_taken="SEND_WHATSAPP",
             channel="WHATSAPP",
@@ -132,11 +124,8 @@ def test_strategist_sufficient_precedent_and_analyst_write_back():
     )
     intel_out = CustomerIntelligenceOutput(
         customer_id="cust_202",
-        segment=CustomerSegment.HIGH_VALUE,
-        ltv=95000.0,
-        churn_probability=0.08,
-        preferred_channel=CommunicationChannel.WHATSAPP,
-        recovery_probability=0.85,
+        payer_reliability_score=0.90,
+        available_channels=["WHATSAPP", "SMS", "EMAIL"],
         confidence=0.80,
         insights="VIP customer",
     )

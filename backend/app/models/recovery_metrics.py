@@ -30,4 +30,6 @@ class RecoveryMetricsRecord(Base):
     escalated_cases_count = Column(Integer, nullable=False, default=0)
     rejected_actions_count = Column(Integer, nullable=False, default=0)
     segment_breakdown = Column(JSON, nullable=True)  # List of {segment, at_risk, recovered, rate}
+    simulation_name = Column(String(128), nullable=True)
+    step_telemetry = Column(JSON, nullable=True)  # List of {name, duration_seconds, status, summary}
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)

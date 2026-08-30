@@ -1,63 +1,100 @@
 import React, { useState } from 'react';
-import { useRecoveryCases } from '../hooks/useRecoveryCases';
-import { CaseFilters } from '../components/CaseFilters';
-import { CasesTable } from '../components/CasesTable';
-import { CaseDetailDrawer } from '../components/CaseDetailDrawer';
-import type { CaseStatus, RecoveryCaseResponse } from '../../../types/recovery';
+import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { Button } from '../../../components/ui/button';
+import { RecoveryCaseDetailDrawer } from '../components/RecoveryCaseDetailDrawer';
+import { RecoveryCasesFilters } from '../components/RecoveryCasesFilters';
+import { RecoveryCasesTable } from '../components/RecoveryCasesTable';
+import { useGetRecoveryCases } from '../hooks/useGetRecoveryCases';
+import { LogoLoader } from '../../../components/common/LogoLoader';
+import type { RecoveryCasesFiltersState } from '../types/recovery-cases.types';
+
+const INITIAL_FILTERS: RecoveryCasesFiltersState = {
+  search: '',
+  status: 'all',
+  reason: 'all',
+  priority: 'all',
+};
 
 export const RecoveryCasesContainer: React.FC = () => {
-  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<RecoveryCasesFiltersState>(INITIAL_FILTERS);
+  const [page, setPage] = useState<number>(1);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
-  const { data: casesData, isLoading } = useRecoveryCases({
-    status: selectedStatus === 'ALL' ? undefined : (selectedStatus as CaseStatus),
-    limit: 100,
-  });
+  const pageSize = 10;
+  const { casesData, caseDetail, isLoading, isError, error, refetch } = useGetRecoveryCases(
+    filters,
+    page,
+    pageSize,
+    selectedCaseId
+  );
 
-  const filteredItems = (casesData?.items || []).filter((item: RecoveryCaseResponse) => {
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
+  const handleFilterChange = (key: keyof RecoveryCasesFiltersState, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
+
+  const handleResetFilters = () => {
+    setFilters(INITIAL_FILTERS);
+    setPage(1);
+  };
+
+  const handleViewCase = (caseId: string) => {
+    setSelectedCaseId(caseId);
+    setIsDrawerOpen(true);
+  };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+  };
+
+  if (isError) {
     return (
-      item.id.toLowerCase().includes(term) ||
-      item.customer_name.toLowerCase().includes(term) ||
-      item.customer_email.toLowerCase().includes(term) ||
-      item.customer_segment.toLowerCase().includes(term)
+      <div className="p-8 bg-white border border-rose-200 rounded-xl shadow-sm text-center space-y-4">
+        <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+          <AlertTriangle className="w-6 h-6" />
+        </div>
+        <div className="text-base font-semibold text-slate-900">Failed to load Recovery Cases</div>
+        <p className="text-xs text-slate-500 max-w-md mx-auto">
+          {(error as Error)?.message || 'An unexpected error occurred.'}
+        </p>
+        <Button onClick={() => refetch()} variant="outline" size="sm" className="space-x-2">
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Retry Connection</span>
+        </Button>
+      </div>
     );
-  });
+  }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-[#0c2340]/90 border border-slate-800 backdrop-blur shadow-xl">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            Recovery Cases Management
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Browse payment failure events, examine empirical precedent grounds, inspect policy gates, and monitor promises-to-pay.
-          </p>
-        </div>
-
-        <CaseFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          selectedStatus={selectedStatus}
-          onStatusChange={setSelectedStatus}
-        />
-      </div>
-
-      {/* Cases Table */}
-      <CasesTable
-        cases={filteredItems}
-        isLoading={isLoading}
-        onSelectCase={setSelectedCaseId}
+    <div className="space-y-6">
+      {/* 1. Filters Row */}
+      <RecoveryCasesFilters
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onResetFilters={handleResetFilters}
       />
 
-      {/* Case Detail Slide-over Modal */}
-      <CaseDetailDrawer
-        caseId={selectedCaseId}
-        onClose={() => setSelectedCaseId(null)}
+      {/* 2. Cases Table */}
+      {isLoading ? (
+        <LogoLoader variant="table" label="Retrieving live recovery case ledger..." />
+      ) : (
+        <RecoveryCasesTable
+          cases={casesData?.items || []}
+          total={casesData?.total || 0}
+          inProgressCount={casesData?.in_progress_count || 0}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onViewCase={handleViewCase}
+        />
+      )}
+
+      {/* 3. Detail Drawer */}
+      <RecoveryCaseDetailDrawer
+        caseDetail={caseDetail || null}
+        isOpen={isDrawerOpen}
+        onClose={handleCloseDrawer}
       />
     </div>
   );

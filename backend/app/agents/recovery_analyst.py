@@ -26,12 +26,12 @@ class RecoveryAnalystAgent:
     def write_back_resolved_case(
         cls,
         case_id: str,
-        segment: str,
         failure_reason: str,
         action_taken: str,
         channel: str | None,
         outcome: str,
         recovered_amount: float,
+        segment: str | None = None,
     ) -> None:
         """
         Inserts a resolved case into the ChromaDB recovery_playbook collection.
@@ -39,14 +39,14 @@ class RecoveryAnalystAgent:
         """
         logger.info(
             f"[RecoveryAnalyst] Writing back resolved case {case_id} to ChromaDB recovery_playbook "
-            f"(Segment: {segment}, Reason: {failure_reason}, Action: {action_taken}, Outcome: {outcome}, Recovered: ₹{recovered_amount:,.2f})"
+            f"(Reason: {failure_reason}, Action: {action_taken}, Outcome: {outcome}, Recovered: ₹{recovered_amount:,.2f})"
         )
         RecoveryPlaybookService.insert_resolved_case(
             case_id=case_id,
-            segment=segment,
             failure_reason=failure_reason,
             action_taken=action_taken,
             channel=channel,
             outcome=outcome,
             recovered_amount=recovered_amount,
+            segment=segment,
         )

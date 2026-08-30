@@ -44,28 +44,22 @@ def run_rag_feedback_loop_verification():
         id="cust_loyal_101",
         name="Aditya Roy",
         email="aditya@example.com",
+        phone="+919876543210",
         segment=CustomerSegment.LOYAL,
-        ltv=55000.0,
-        churn_probability=0.10,
-        preferred_channel=CommunicationChannel.WHATSAPP,
     )
     c2 = Customer(
         id="cust_hv_102",
         name="Kavita Krishnamurthy",
         email="kavita@example.com",
+        phone="+919876543211",
         segment=CustomerSegment.HIGH_VALUE,
-        ltv=110000.0,
-        churn_probability=0.08,
-        preferred_channel=CommunicationChannel.WHATSAPP,
     )
     c3 = Customer(
         id="cust_reg_103",
         name="Manoj Bajpayee",
         email="manoj@example.com",
+        phone="+919876543212",
         segment=CustomerSegment.REGULAR,
-        ltv=18000.0,
-        churn_probability=0.25,
-        preferred_channel=CommunicationChannel.EMAIL,
     )
     db.add_all([c1, c2, c3])
     db.commit()
@@ -175,7 +169,7 @@ def run_rag_feedback_loop_verification():
         proposal=novel_proposal,
         amount=1200.0,
         previous_attempts=1,
-        customer_churn_risk=0.10,
+        payer_reliability_score=0.80,
     )
     print("Constructed Test Case:")
     print(f"  • Action: {novel_proposal.action_type.value}")

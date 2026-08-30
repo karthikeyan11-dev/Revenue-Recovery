@@ -1,106 +1,123 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { ShieldAlert, Cpu, Layers, Terminal, ArrowUpRight } from 'lucide-react';
 import { queryClient } from './lib/queryClient';
 import { DashboardLayout } from './components/layout/DashboardLayout';
-import { HealthStatusCard } from './components/HealthStatusCard';
 import { DashboardContainer } from './features/dashboard';
 import { RecoveryCasesContainer } from './features/recovery-cases';
 import { AgentActivityContainer } from './features/agent-activity';
-import { ROUTES } from './constants/routes';
-import type { RouteKey } from './constants/routes';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './components/ui/card';
+import { ROUTES } from './constants/routes.constants';
+import type { RouteKey } from './constants/routes.constants';
 
-export const AppContent: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<RouteKey>(ROUTES.OVERVIEW);
+const PATH_TO_ROUTE: Record<string, RouteKey> = {
+  '/': ROUTES.DASHBOARD,
+  '/dashboard': ROUTES.DASHBOARD,
+  '/recovery-cases': ROUTES.CASES,
+  '/cases': ROUTES.CASES,
+  '/agent-activity': ROUTES.AGENTS,
+  '/agents': ROUTES.AGENTS,
+  '/settings': ROUTES.SETTINGS,
+};
 
-  return (
-    <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab}>
-      {activeTab === ROUTES.OVERVIEW && (
-        <div className="space-y-8 animate-in fade-in duration-200">
-          {/* Mission & Key Architectural Principle */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0c2340] via-[#091e38] to-[#07162c] p-8 border border-slate-700/60 shadow-2xl">
-            <div className="relative z-10 max-w-3xl space-y-3">
-              <div className="inline-flex items-center space-x-2 px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-400 text-xs font-mono border border-brand-500/30">
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>Core Architectural Principle</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                The LLM Proposes Decisions. <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-razorpay-accent">
-                  A Deterministic Policy Engine Decides.
-                </span>
-              </h1>
-              <p className="text-slate-300 text-sm leading-relaxed">
-                An autonomous AI system detecting revenue at risk from failed payments & abandoned
-                checkouts, evaluating customer context, selecting bounded recovery actions, and
-                empirically measuring recovered ₹ against a naive baseline.
-              </p>
-            </div>
+const ROUTE_TO_PATH: Record<RouteKey, string> = {
+  [ROUTES.DASHBOARD]: '/dashboard',
+  [ROUTES.CASES]: '/recovery-cases',
+  [ROUTES.AGENTS]: '/agent-activity',
+  [ROUTES.SETTINGS]: '/settings',
+};
+
+const SettingsView: React.FC = () => (
+  <div className="space-y-6">
+    <Card className="bg-white border-slate-200/80 shadow-sm">
+      <CardHeader>
+        <CardTitle>Deterministic Policy Engine Guardrails</CardTitle>
+        <CardDescription>Hard constraints enforced automatically on all autonomous AI proposals</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/60 space-y-1">
+            <div className="text-xs font-semibold text-slate-500 uppercase">Max Payment Retries</div>
+            <div className="text-sm font-bold text-slate-900">3 Attempts per Transaction</div>
+            <div className="text-[11px] text-slate-500">Prevents bank rate-limiting & fee spikes</div>
           </div>
-
-          {/* Health Status Probe Card */}
-          <HealthStatusCard />
-
-          {/* Architecture Node Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-xl bg-[#0c2340]/60 border border-slate-800 hover:border-slate-700 transition-colors">
-              <div className="flex items-center justify-between text-brand-400 mb-3">
-                <Cpu className="w-5 h-5" />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                  Node 01
-                </span>
-              </div>
-              <h4 className="text-sm font-semibold text-white mb-1">Revenue Detective</h4>
-              <p className="text-xs text-slate-400">
-                Rules + LLM reasoning for leak identification and recoverability scoring.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-[#0c2340]/60 border border-slate-800 hover:border-slate-700 transition-colors">
-              <div className="flex items-center justify-between text-brand-400 mb-3">
-                <Layers className="w-5 h-5" />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                  Node 02
-                </span>
-              </div>
-              <h4 className="text-sm font-semibold text-white mb-1">Customer Intelligence</h4>
-              <p className="text-xs text-slate-400">
-                Customer profiling, churn risk evaluation, and channel affinity calculation.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-[#0c2340]/60 border border-slate-800 hover:border-slate-700 transition-colors">
-              <div className="flex items-center justify-between text-brand-400 mb-3">
-                <Terminal className="w-5 h-5" />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                  Node 03
-                </span>
-              </div>
-              <h4 className="text-sm font-semibold text-white mb-1">Recovery Strategist</h4>
-              <p className="text-xs text-slate-400">
-                Pydantic structured action proposals (Retry, WhatsApp, Discount, Escalate).
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-[#0c2340]/60 border border-slate-800 hover:border-slate-700 transition-colors">
-              <div className="flex items-center justify-between text-brand-400 mb-3">
-                <ArrowUpRight className="w-5 h-5" />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                  Node 04
-                </span>
-              </div>
-              <h4 className="text-sm font-semibold text-white mb-1">Recovery Analyst</h4>
-              <p className="text-xs text-slate-400">
-                Empirical ROI computation & baseline vs AI comparative analytics.
-              </p>
-            </div>
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/60 space-y-1">
+            <div className="text-xs font-semibold text-slate-500 uppercase">Max Incentive Discount</div>
+            <div className="text-sm font-bold text-slate-900">15% of Invoice Value</div>
+            <div className="text-[11px] text-slate-500">Hard limit on recovery concessions</div>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/60 space-y-1">
+            <div className="text-xs font-semibold text-slate-500 uppercase">Precedent Verification</div>
+            <div className="text-sm font-bold text-slate-900">Enforce RAG Precedent Verification</div>
+            <div className="text-[11px] text-slate-500">Blocks unproven recovery strategies</div>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/60 space-y-1">
+            <div className="text-xs font-semibold text-slate-500 uppercase">Human Escalation Threshold</div>
+            <div className="text-sm font-bold text-slate-900">₹50,000 INR</div>
+            <div className="text-[11px] text-slate-500">Auto-routes enterprise failures to account team</div>
           </div>
         </div>
-      )}
+      </CardContent>
+    </Card>
 
-      {activeTab === ROUTES.DASHBOARD && <DashboardContainer />}
+    <Card className="bg-white border-slate-200/80 shadow-sm">
+      <CardHeader>
+        <CardTitle>Razorpay Test API Integration Status</CardTitle>
+        <CardDescription>Live payment gateway test credentials and webhook receiver</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-sm">
+          <span className="font-semibold">Razorpay Client Interface:</span>
+          <span className="px-2 py-0.5 bg-emerald-200 text-emerald-900 rounded text-xs font-medium">Ready (Sandbox)</span>
+        </div>
+        <div className="text-xs text-slate-600">
+          Webhook Endpoint: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-800">POST /webhook/razorpay</code> with automated HMAC-SHA256 signature verification.
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+);
+
+function getRouteFromPathname(): RouteKey {
+  const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+  return PATH_TO_ROUTE[path] || ROUTES.DASHBOARD;
+}
+
+export const AppContent: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<RouteKey>(getRouteFromPathname);
+  const [timeRange, setTimeRange] = useState<string>('all');
+
+  const handleTabChange = useCallback((tab: RouteKey) => {
+    setActiveTab(tab);
+    const targetPath = ROUTE_TO_PATH[tab] || '/dashboard';
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState(null, '', targetPath);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => {
+      setActiveTab(getRouteFromPathname());
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  return (
+    <DashboardLayout
+      activeTab={activeTab}
+      onTabChange={handleTabChange}
+      timeRange={timeRange}
+      onTimeRangeChange={setTimeRange}
+    >
+      {activeTab === ROUTES.DASHBOARD && (
+        <DashboardContainer
+          timeRange={timeRange}
+          onNavigateToCases={() => handleTabChange(ROUTES.CASES)}
+        />
+      )}
       {activeTab === ROUTES.CASES && <RecoveryCasesContainer />}
       {activeTab === ROUTES.AGENTS && <AgentActivityContainer />}
+      {activeTab === ROUTES.SETTINGS && <SettingsView />}
     </DashboardLayout>
   );
 };

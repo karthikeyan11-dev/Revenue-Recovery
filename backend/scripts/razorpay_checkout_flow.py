@@ -183,9 +183,6 @@ def main():
             email=tc["email"],
             phone=tc["phone"],
             segment=tc["segment"],
-            ltv=55000.0,
-            churn_probability=0.15,
-            preferred_channel=CommunicationChannel.WHATSAPP,
         )
         db.add(cust)
         db.commit()

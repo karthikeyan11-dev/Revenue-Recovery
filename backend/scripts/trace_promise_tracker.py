@@ -65,10 +65,8 @@ def main():
         id="cust_trace_01",
         name="Vikram Seth",
         email="vikram@example.com",
+        phone="+919876543210",
         segment=CustomerSegment.LOYAL,
-        ltv=52000.0,
-        churn_probability=0.15,
-        preferred_channel=CommunicationChannel.WHATSAPP,
     )
     tx1 = Transaction(
         id="tx_trace_01",

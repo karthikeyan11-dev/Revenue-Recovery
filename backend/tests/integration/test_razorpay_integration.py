@@ -12,15 +12,15 @@ from sqlalchemy.pool import StaticPool
 from app.config import settings
 from app.database import Base, get_db
 from app.integrations.razorpay.client import RazorpayClient
+from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
 from app.main import app
-from app.models.customer import CommunicationChannel, Customer, CustomerSegment
+from app.models.customer import CommunicationChannel, Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.promise_to_pay import PromiseStatus, PromiseToPay
 from app.models.recovery_case import CaseStatus, RecoveryCase
 from app.models.revenue_leak import LeakType, RevenueLeak
 from app.models.transaction import PaymentMethod, Transaction, TransactionStatus
 from app.models.webhook_event import RazorpayWebhookEvent
-from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
 
 
 @pytest.fixture
@@ -246,8 +246,6 @@ def test_webhook_receiver_payment_captured_closes_active_case(client, test_db):
         name="Pooja Test",
         email="pooja.test@example.com",
         phone="+919845012345",
-        segment=CustomerSegment.LOYAL,
-        preferred_channel=CommunicationChannel.WHATSAPP,
     )
     test_db.add(cust)
 

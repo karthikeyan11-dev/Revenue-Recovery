@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -8,6 +8,8 @@ from app.schemas.run import (
     GenerateDataResponse,
     RunStrategyRequest,
     RunStrategyResponse,
+    SimulationHistoryResponse,
+    SimulationStepTelemetry,
 )
 from app.services.simulation_service import SimulationService
 
@@ -31,6 +33,7 @@ def generate_data(
         customer_count=customer_count,
         transaction_count=payload.transaction_count,
         failure_rate=payload.failure_rate,
+        clear_existing=payload.clear_existing,
     )
     return GenerateDataResponse(**result)
 
@@ -46,13 +49,20 @@ def run_baseline(
     db: Session = Depends(get_db),
 ) -> RunStrategyResponse:
     service = SimulationService(db)
-    metrics = service.run_baseline_simulation(limit=payload.limit)
+    metrics = service.run_baseline_simulation(
+        limit=payload.limit,
+        simulation_name=payload.simulation_name,
+    )
+    steps = [SimulationStepTelemetry(**s) for s in (metrics.step_telemetry or [])]
     return RunStrategyResponse(
+        simulation_id=metrics.simulation_id,
+        simulation_name=metrics.simulation_name,
         status="completed",
         strategy="BASELINE_RETRY_ONCE",
         cases_processed=metrics.cases_count,
         metrics=metrics,
-        message="Naive retry-once simulation executed successfully.",
+        step_telemetry=steps,
+        message=f"Naive retry-once simulation '{metrics.simulation_name}' executed successfully.",
     )
 
 
@@ -67,11 +77,33 @@ def run_ai(
     db: Session = Depends(get_db),
 ) -> RunStrategyResponse:
     service = SimulationService(db)
-    metrics = service.run_ai_simulation(limit=payload.limit, use_mock=payload.use_mock_llm)
+    metrics = service.run_ai_simulation(
+        limit=payload.limit,
+        use_mock=payload.use_mock_llm,
+        simulation_name=payload.simulation_name,
+    )
+    steps = [SimulationStepTelemetry(**s) for s in (metrics.step_telemetry or [])]
     return RunStrategyResponse(
+        simulation_id=metrics.simulation_id,
+        simulation_name=metrics.simulation_name,
         status="completed",
         strategy="AI_ORCHESTRATOR",
         cases_processed=metrics.cases_count,
         metrics=metrics,
-        message="AI multi-agent recovery orchestrator simulation executed successfully.",
+        step_telemetry=steps,
+        message=f"AI multi-agent recovery orchestrator simulation '{metrics.simulation_name}' executed successfully.",
     )
+
+
+@router.get(
+    "/simulations/history",
+    response_model=SimulationHistoryResponse,
+    summary="Get recent persisted simulation runs and step execution telemetry",
+    operation_id="get_simulation_history",
+)
+def get_simulation_history(
+    limit: int = Query(10, ge=1, le=50, description="Max simulation history records to fetch"),
+    db: Session = Depends(get_db),
+) -> SimulationHistoryResponse:
+    service = SimulationService(db)
+    return service.get_simulation_history(limit=limit)

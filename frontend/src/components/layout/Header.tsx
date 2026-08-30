@@ -1,5 +1,4 @@
 import React from 'react';
-import { Zap } from 'lucide-react';
 import { NAV_ITEMS } from '../../constants/routes';
 import type { RouteKey } from '../../constants/routes';
 
@@ -13,9 +12,11 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange }) => {
     <header className="border-b border-slate-800 bg-[#0c2340]/80 backdrop-blur sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="h-9 w-9 rounded-lg bg-gradient-to-tr from-brand-600 to-razorpay-accent flex items-center justify-center shadow-lg shadow-brand-500/20">
-            <Zap className="h-5 w-5 text-white" />
-          </div>
+          <img
+            src="/revenue-recovery-logo-alone.png"
+            alt="Revenue Recovery Logo"
+            className="h-9 w-9 object-contain drop-shadow-md"
+          />
           <div>
             <div className="flex items-center space-x-2">
               <span className="font-bold text-white tracking-tight text-lg">

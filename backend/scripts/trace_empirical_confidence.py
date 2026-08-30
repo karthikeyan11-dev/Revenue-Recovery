@@ -34,10 +34,8 @@ def run_empirical_confidence_trace():
         id="cust_loyal_1",
         name="Rohit Verma",
         email="rohit@example.com",
+        phone="+919876543210",
         segment=CustomerSegment.LOYAL,
-        ltv=60000.0,
-        churn_probability=0.12,
-        preferred_channel=CommunicationChannel.WHATSAPP,
     )
     # Segment 2: AT_RISK - 12 resolved cases (3 recovered, 9 failed)
     # Failure Reason 2: EXPIRED_CARD - 6 resolved cases (1 recovered, 5 failed)
@@ -45,10 +43,8 @@ def run_empirical_confidence_trace():
         id="cust_risk_1",
         name="Sneha Patil",
         email="sneha@example.com",
+        phone="+919876543211",
         segment=CustomerSegment.AT_RISK,
-        ltv=7500.0,
-        churn_probability=0.78,
-        preferred_channel=CommunicationChannel.EMAIL,
     )
     # Segment 3: HIGH_VALUE - 15 resolved cases (13 recovered, 2 failed)
     # Failure Reason 3: INSUFFICIENT_FUNDS - 20 resolved cases (11 recovered, 9 failed)
@@ -56,10 +52,8 @@ def run_empirical_confidence_trace():
         id="cust_hv_1",
         name="Vikramaditya Singhania",
         email="vikram@example.com",
+        phone="+919876543212",
         segment=CustomerSegment.HIGH_VALUE,
-        ltv=120000.0,
-        churn_probability=0.05,
-        preferred_channel=CommunicationChannel.WHATSAPP,
     )
     # Segment 4: CHURNING - 9 resolved cases (1 recovered, 8 failed)
     # Failure Reason 4: AUTHENTICATION_FAILED - 8 resolved cases (3 recovered, 5 failed)
@@ -67,20 +61,16 @@ def run_empirical_confidence_trace():
         id="cust_churn_1",
         name="Pooja Nair",
         email="pooja@example.com",
+        phone="+919876543213",
         segment=CustomerSegment.CHURNING,
-        ltv=4200.0,
-        churn_probability=0.92,
-        preferred_channel=CommunicationChannel.SMS,
     )
     # Another LOYAL customer for invariance verification
     c_loyal_2 = Customer(
         id="cust_loyal_2",
         name="Deepak Joshi",
         email="deepak@example.com",
+        phone="+919876543214",
         segment=CustomerSegment.LOYAL,
-        ltv=48000.0,
-        churn_probability=0.15,
-        preferred_channel=CommunicationChannel.WHATSAPP,
     )
 
     db.add_all([c_loyal, c_at_risk, c_high_val, c_churning, c_loyal_2])

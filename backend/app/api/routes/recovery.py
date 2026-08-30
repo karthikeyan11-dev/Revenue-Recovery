@@ -1,4 +1,6 @@
 import logging
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -31,12 +33,32 @@ def list_cases(
     status_filter: CaseStatus | None = Query(
         None, alias="status", description="Filter by case status"
     ),
+    priority: str | None = Query(
+        None, description="Filter by priority (HIGH, MEDIUM, LOW)"
+    ),
+    search: str | None = Query(
+        None, description="Search by Case ID, Customer name, or email"
+    ),
+    date_from: datetime | None = Query(
+        None, description="Filter cases created on or after this timestamp"
+    ),
+    date_to: datetime | None = Query(
+        None, description="Filter cases created on or before this timestamp"
+    ),
     limit: int = Query(50, ge=1, le=200, description="Items per page"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     db: Session = Depends(get_db),
 ) -> CasesListResponse:
     service = RecoveryOrchestratorService(db)
-    return service.list_cases(limit=limit, offset=offset, status=status_filter)
+    return service.list_cases(
+        limit=limit,
+        offset=offset,
+        status=status_filter,
+        priority=priority,
+        search=search,
+        date_from=date_from,
+        date_to=date_to,
+    )
 
 
 @cases_router.get(
@@ -103,7 +125,6 @@ def evaluate_promise(
             customer_id=cust.id if cust else None,
             customer_name=cust.name if cust else "Unknown",
             customer_email=cust.email if cust else "unknown@example.com",
-            customer_segment=cust.segment.value if cust and cust.segment else "REGULAR",
             committed_amount=promise.committed_amount,
             committed_date=promise.committed_date,
             status=promise.status,

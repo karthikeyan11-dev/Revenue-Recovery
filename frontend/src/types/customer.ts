@@ -13,8 +13,8 @@ export interface CustomerProfileResponse {
   name: string;
   email: string;
   phone?: string | null;
-  segment: CustomerSegment;
-  ltv: number;
-  churn_probability: number;
-  preferred_channel: CommunicationChannel;
+  payer_reliability_score?: number;
+  available_channels?: string[];
+  total_past_transactions?: number;
+  successful_past_transactions?: number;
 }

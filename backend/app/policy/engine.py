@@ -8,6 +8,7 @@ from app.policy.rules import (
     MAX_RETRY_ATTEMPTS,
     MIN_PRECEDENT_SAMPLE_SIZE,
     RULE_HIGH_VALUE_HIGH_CHURN,
+    RULE_HIGH_VALUE_LOW_RELIABILITY,
     RULE_INSUFFICIENT_PRECEDENT,
     RULE_MAX_INCENTIVE_PERCENT,
     RULE_MAX_PROMISE_FOLLOWUPS,
@@ -44,12 +45,13 @@ class PolicyEngine:
         proposal: ProposedRecoveryAction,
         amount: float,
         previous_attempts: int = 0,
-        customer_churn_risk: float = 0.0,
+        payer_reliability_score: float = 0.50,
         previous_promise_followups: int = 0,
     ) -> PolicyEvaluationResult:
         logger.info(
             f"Evaluating policy for action={proposal.action_type}, amount=₹{amount}, attempts={previous_attempts}, "
-            f"promise_followups={previous_promise_followups}, insufficient_precedent={getattr(proposal, 'insufficient_precedent', False)}"
+            f"reliability={payer_reliability_score}, promise_followups={previous_promise_followups}, "
+            f"insufficient_precedent={getattr(proposal, 'insufficient_precedent', False)}"
         )
 
         # Rule 0A: Insufficient Precedent in RAG Playbook (Escalate to human review)
@@ -94,11 +96,14 @@ class PolicyEngine:
                 )
 
         # Rule 3: High Value Transaction Protection Gate
-        if amount >= HIGH_VALUE_THRESHOLD and customer_churn_risk > 0.35:
+        if amount >= HIGH_VALUE_THRESHOLD and payer_reliability_score < 0.50:
             return PolicyEvaluationResult(
                 decision=PolicyDecision.ESCALATED,
-                reasoning=f"Transaction value ₹{amount:,.2f} exceeds high-value threshold (₹{HIGH_VALUE_THRESHOLD:,.2f}) with elevated churn risk ({customer_churn_risk:.0%}). Escalating for white-glove manual handling.",
-                violated_rule=RULE_HIGH_VALUE_HIGH_CHURN,
+                reasoning=(
+                    f"Transaction value ₹{amount:,.2f} exceeds high-value threshold (₹{HIGH_VALUE_THRESHOLD:,.2f}) "
+                    f"for low-reliability payer ({payer_reliability_score:.1%}). Escalating for white-glove manual handling."
+                ),
+                violated_rule=RULE_HIGH_VALUE_LOW_RELIABILITY,
             )
 
         # Rule 4: Explicit Human Escalation Request

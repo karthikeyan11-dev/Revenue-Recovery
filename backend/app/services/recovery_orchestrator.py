@@ -13,8 +13,10 @@ from app.models.promise_to_pay import PromiseStatus, PromiseToPay
 from app.models.recovery_action import ActionType, PolicyDecision, RecoveryAction
 from app.models.recovery_case import CaseStatus, RecoveryCase
 from app.models.revenue_leak import LeakType, RevenueLeak
+from app.models.transaction import TransactionStatus
 from app.repositories.recovery import RecoveryRepository
 from app.repositories.transaction import TransactionRepository
+from app.schemas.promise import PromiseToPaySummary
 from app.schemas.recovery import (
     CaseActionItem,
     CasesListResponse,
@@ -22,7 +24,6 @@ from app.schemas.recovery import (
     RecoveryCaseDetail,
     RecoveryCaseSummary,
 )
-from app.schemas.promise import PromiseToPaySummary
 
 logger = logging.getLogger("app.services.recovery_orchestrator")
 
@@ -38,8 +39,20 @@ class RecoveryOrchestratorService:
         limit: int = 100,
         offset: int = 0,
         status: CaseStatus | None = None,
+        priority: str | None = None,
+        search: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
     ) -> CasesListResponse:
-        cases = self.recovery_repo.get_all_cases(limit=limit, offset=offset, status=status)
+        cases, total_count = self.recovery_repo.get_all_cases(
+            limit=limit,
+            offset=offset,
+            status=status,
+            priority=priority,
+            search=search,
+            date_from=date_from,
+            date_to=date_to,
+        )
         counts = self.recovery_repo.count_cases_by_status()
 
         summaries = []
@@ -68,26 +81,77 @@ class RecoveryOrchestratorService:
             ptp = c.promises_to_pay[-1] if c.promises_to_pay else None
             promise_status = ptp.status.value if ptp else None
 
+            # Priority derivation (deterministic business formula based on transaction amount)
+            amount = c.revenue_leak.amount if c.revenue_leak else 0.0
+            if amount >= 20000.0:
+                case_priority = "HIGH"
+            elif amount < 5000.0:
+                case_priority = "LOW"
+            else:
+                case_priority = "MEDIUM"
+
+            # Recovery % computation
+            if c.status == CaseStatus.RECOVERED and amount > 0:
+                rec_rate = min(100.0, round((c.recovered_amount / amount) * 100.0, 1))
+            elif c.status == CaseStatus.FAILED or c.status == CaseStatus.BLOCKED:
+                rec_rate = 0.0
+            else:
+                score = c.revenue_leak.recoverability_score if c.revenue_leak else 0.5
+                rec_rate = round(score * 100.0, 1)
+
+            # Agents involved
+            agent_names = list(dict.fromkeys([log.agent for log in c.audit_logs if log.agent]))
+            if not agent_names:
+                agent_names = ["Revenue Detective", "Customer Intelligence", "Recovery Strategist"]
+
+            # Determine current human-readable step
+            if c.status == CaseStatus.RECOVERED:
+                step_str = "Resolution Complete"
+            elif c.status == CaseStatus.ESCALATED:
+                step_str = "Escalated to Human Queue"
+            elif c.status == CaseStatus.BLOCKED:
+                step_str = "Blocked by Policy Gate"
+            elif c.status == CaseStatus.FAILED:
+                step_str = "Execution Finished"
+            elif c.status == CaseStatus.IN_PROGRESS:
+                step_str = "Active Outreach"
+            f_reason = (
+                c.revenue_leak.payment_failure.failure_reason.value
+                if (c.revenue_leak and c.revenue_leak.payment_failure and c.revenue_leak.payment_failure.failure_reason)
+                else None
+            )
+            f_code = (
+                c.revenue_leak.payment_failure.raw_error_code
+                if (c.revenue_leak and c.revenue_leak.payment_failure)
+                else None
+            )
+
             summaries.append(
                 RecoveryCaseSummary(
                     id=c.id,
                     customer_id=c.customer_id,
                     customer_name=c.customer.name if c.customer else "Unknown",
                     customer_email=c.customer.email if c.customer else "unknown@example.com",
-                    customer_segment=c.customer.segment if c.customer else "REGULAR",
                     leak_type=(
                         c.revenue_leak.leak_type if c.revenue_leak else LeakType.TRANSACTION_FAILURE
                     ),
-                    leak_amount=c.revenue_leak.amount if c.revenue_leak else 0.0,
+                    leak_amount=amount,
+                    amount_at_risk=amount,
+                    failure_reason=f_reason,
+                    failure_code=f_code,
                     recoverability_score=(
                         c.revenue_leak.recoverability_score if c.revenue_leak else 0.5
                     ),
                     status=c.status,
+                    priority=case_priority,
+                    recovery_rate_percent=rec_rate,
                     recovered_amount=c.recovered_amount,
                     recovery_cost=c.recovery_cost,
                     has_sufficient_precedent=not has_insufficient_escalation,
                     precedent_count=precedent_count,
                     promise_status=promise_status,
+                    agents_involved=agent_names,
+                    current_step=step_str,
                     created_at=c.created_at,
                     resolved_at=c.resolved_at,
                 )
@@ -95,8 +159,9 @@ class RecoveryOrchestratorService:
 
         return CasesListResponse(
             items=summaries,
-            total=counts["total"],
-            open_count=counts["open"] + counts["in_progress"],
+            total=total_count,
+            open_count=counts["open"],
+            in_progress_count=counts["in_progress"],
             recovered_count=counts["recovered"],
             escalated_count=counts["escalated"],
             failed_count=counts["failed"] + counts["blocked"],
@@ -172,11 +237,6 @@ class RecoveryOrchestratorService:
                 customer_id=case.customer_id,
                 customer_name=case.customer.name if case.customer else "Unknown",
                 customer_email=case.customer.email if case.customer else "unknown@example.com",
-                customer_segment=(
-                    case.customer.segment.value
-                    if case.customer and case.customer.segment
-                    else "REGULAR"
-                ),
                 committed_amount=p.committed_amount,
                 committed_date=p.committed_date,
                 status=p.status,
@@ -187,25 +247,83 @@ class RecoveryOrchestratorService:
             for p in case.promises_to_pay
         ]
 
+        # Determine priority and step for detail
+        amount = case.revenue_leak.amount if case.revenue_leak else 0.0
+        if amount >= 20000.0:
+            case_priority = "HIGH"
+        elif amount < 5000.0:
+            case_priority = "LOW"
+        else:
+            case_priority = "MEDIUM"
+
+        # Calculate Laplace smoothed payer reliability score
+        past_txs = case.customer.transactions if case.customer and case.customer.transactions else []
+        total_tx = len(past_txs)
+        success_tx = sum(1 for t in past_txs if t.status == TransactionStatus.SUCCESS)
+        reliability = round((success_tx + 2) / (total_tx + 4), 4)
+
+        if case.status == CaseStatus.RECOVERED and amount > 0:
+            rec_rate = min(100.0, round((case.recovered_amount / amount) * 100.0, 1))
+        elif case.status in [CaseStatus.FAILED, CaseStatus.BLOCKED]:
+            rec_rate = 0.0
+        else:
+            score = case.revenue_leak.recoverability_score if case.revenue_leak else 0.5
+            rec_rate = round(score * 100.0, 1)
+
+        agent_names = list(dict.fromkeys([log.agent for log in case.audit_logs if log.agent]))
+        if not agent_names:
+            agent_names = ["Revenue Detective", "Customer Intelligence", "Recovery Strategist"]
+
+        if case.status == CaseStatus.RECOVERED:
+            step_str = "Resolution Complete"
+        elif case.status == CaseStatus.ESCALATED:
+            step_str = "Escalated to Human Queue"
+        elif case.status == CaseStatus.BLOCKED:
+            step_str = "Blocked by Policy Gate"
+        elif case.status == CaseStatus.FAILED:
+            step_str = "Execution Finished"
+        elif case.status == CaseStatus.IN_PROGRESS:
+            step_str = "Active Outreach"
+        else:
+            step_str = "Pending Evaluation"
+
+        f_reason = (
+            case.revenue_leak.payment_failure.failure_reason.value
+            if (case.revenue_leak and case.revenue_leak.payment_failure and case.revenue_leak.payment_failure.failure_reason)
+            else None
+        )
+        f_code = (
+            case.revenue_leak.payment_failure.raw_error_code
+            if (case.revenue_leak and case.revenue_leak.payment_failure)
+            else None
+        )
+
         return RecoveryCaseDetail(
             id=case.id,
             customer_id=case.customer_id,
             customer_name=case.customer.name if case.customer else "Unknown",
             customer_email=case.customer.email if case.customer else "unknown@example.com",
-            customer_segment=case.customer.segment if case.customer else "REGULAR",
             leak_type=(
                 case.revenue_leak.leak_type if case.revenue_leak else LeakType.TRANSACTION_FAILURE
             ),
-            leak_amount=case.revenue_leak.amount if case.revenue_leak else 0.0,
+            leak_amount=amount,
+            amount_at_risk=amount,
+            failure_reason=f_reason,
+            failure_code=f_code,
+            payer_reliability_score=reliability,
             recoverability_score=(
                 case.revenue_leak.recoverability_score if case.revenue_leak else 0.5
             ),
             status=case.status,
+            priority=case_priority,
+            recovery_rate_percent=rec_rate,
             recovered_amount=case.recovered_amount,
             recovery_cost=case.recovery_cost,
             has_sufficient_precedent=not has_insufficient_escalation,
             precedent_count=precedent_count,
             promise_status=promise_status,
+            agents_involved=agent_names,
+            current_step=step_str,
             created_at=case.created_at,
             resolved_at=case.resolved_at,
             actions=actions,
@@ -240,6 +358,7 @@ class RecoveryOrchestratorService:
             "cost": 0.0,
             "details": "",
             "communication_event_data": None,
+            "reproposal_count": 0,
         }
 
         final_state = recovery_graph.invoke(initial_state)
@@ -256,33 +375,45 @@ class RecoveryOrchestratorService:
         details = final_state["details"]
         comm_data = final_state["communication_event_data"]
 
-        # 2. Persist Revenue Leak
-        leak_id = f"leak_{uuid.uuid4().hex[:14]}"
-        leak = RevenueLeak(
-            id=leak_id,
-            failure_id=failure.id,
-            leak_type=det_out.leak_type if det_out else LeakType.TRANSACTION_FAILURE,
-            amount=det_out.amount if det_out else tx.amount,
-            confidence=det_out.confidence if det_out else 0.50,
-            recoverability_score=det_out.recoverability_score if det_out else 0.50,
-            reasoning=(
-                det_out.reasoning
-                if det_out
-                else f"Detected leak from {failure.failure_reason.value}"
-            ),
-        )
-        self.recovery_repo.create_leak(leak)
+        # 2. Persist or Update Revenue Leak
+        leak = failure.revenue_leaks[0] if failure.revenue_leaks else None
+        if not leak:
+            leak_id = f"leak_{uuid.uuid4().hex[:14]}"
+            leak = RevenueLeak(
+                id=leak_id,
+                failure_id=failure.id,
+                leak_type=det_out.leak_type if det_out else LeakType.TRANSACTION_FAILURE,
+                amount=det_out.amount if det_out else tx.amount,
+                confidence=det_out.confidence if det_out else 0.50,
+                recoverability_score=det_out.recoverability_score if det_out else 0.50,
+                reasoning=(
+                    det_out.reasoning
+                    if det_out
+                    else f"Detected leak from {failure.failure_reason.value}"
+                ),
+            )
+            self.recovery_repo.create_leak(leak)
+        else:
+            leak.leak_type = det_out.leak_type if det_out else leak.leak_type
+            leak.amount = det_out.amount if det_out else leak.amount
+            leak.confidence = det_out.confidence if det_out else leak.confidence
+            leak.recoverability_score = (
+                det_out.recoverability_score if det_out else leak.recoverability_score
+            )
+            self.db.commit()
 
-        # 3. Persist Recovery Case
-        case_id = f"case_{uuid.uuid4().hex[:14]}"
-        case = RecoveryCase(
-            id=case_id,
-            leak_id=leak.id,
-            customer_id=customer.id,
-            status=CaseStatus.IN_PROGRESS,
-            created_at=datetime.utcnow(),
-        )
-        self.recovery_repo.create_case(case)
+        # 3. Persist or Update Recovery Case
+        case = leak.recovery_case
+        if not case:
+            case_id = f"case_{uuid.uuid4().hex[:14]}"
+            case = RecoveryCase(
+                id=case_id,
+                leak_id=leak.id,
+                customer_id=customer.id,
+                status=CaseStatus.IN_PROGRESS,
+                created_at=datetime.utcnow(),
+            )
+            self.recovery_repo.create_case(case)
 
         # 4. Persist Audit Logs
         # Detective Audit Log
@@ -305,14 +436,20 @@ class RecoveryOrchestratorService:
 
         # Customer Intelligence Audit Log
         if intel_out:
+            channels_str = ", ".join(intel_out.available_channels) if intel_out.available_channels else "EMAIL"
+            alternate_rails_str = ", ".join(intel_out.alternate_rails) if intel_out.has_alternate_rail else "None"
             self.recovery_repo.create_audit_log(
                 AuditLog(
                     id=f"log_{uuid.uuid4().hex[:14]}",
                     case_id=case.id,
                     agent="Customer Intelligence",
                     step_name="PROFILE_ANALYSIS",
-                    input_summary=f"Customer: {customer.name}, Segment: {intel_out.segment.value}, LTV: ₹{intel_out.ltv:,.2f}",
-                    output_summary=f"Churn Risk: {intel_out.churn_probability:.0%}, Channel: {intel_out.preferred_channel.value}, Recovery Prob: {intel_out.recovery_probability:.0%} (Empirical Precedent: n={intel_out.precedent_sample_size})",
+                    input_summary=f"Customer: {customer.name}, Channels: {channels_str}",
+                    output_summary=(
+                        f"Reliability: {intel_out.payer_reliability_score:.1%} ({intel_out.successful_past_transactions}/{intel_out.total_past_transactions} attempts), "
+                        f"Timing: {intel_out.timing_band}, Alternate Rails: {alternate_rails_str}, "
+                        f"Empirical Conf: {intel_out.confidence:.4f} (n={intel_out.precedent_sample_size})"
+                    ),
                     decision="PROFILE_READY",
                     confidence=intel_out.confidence,
                     empirical_confidence=intel_out.confidence,
@@ -329,7 +466,11 @@ class RecoveryOrchestratorService:
                     case_id=case.id,
                     agent="Recovery Strategist",
                     step_name="STRATEGY_PROPOSAL",
-                    input_summary=f"Leak: ₹{tx.amount:,.2f}, Profile: {intel_out.segment.value if intel_out else 'REGULAR'}, Precedents: n={strat_out.retrieved_precedent_count} (Insufficient: {strat_out.insufficient_precedent})",
+                    input_summary=(
+                        f"Leak: ₹{tx.amount:,.2f}, "
+                        f"Reliability: {intel_out.payer_reliability_score:.1%} if intel_out else 'N/A', "
+                        f"Precedents: n={strat_out.retrieved_precedent_count} (Insufficient: {strat_out.insufficient_precedent})"
+                    ),
                     output_summary=f"Proposed: {strat_out.action_type.value} (Discount: {strat_out.incentive_percent}%), Empirical Conf: {strat_out.confidence:.4f}",
                     decision=strat_out.action_type.value,
                     confidence=strat_out.confidence,
@@ -439,12 +580,24 @@ class RecoveryOrchestratorService:
         try:
             RecoveryAnalystAgent.write_back_resolved_case(
                 case_id=case.id,
-                segment=customer.segment.value if customer.segment else "REGULAR",
                 failure_reason=failure.failure_reason.value,
                 action_taken=strat_out.action_type.value if strat_out else "RETRY",
                 channel=strat_out.channel if strat_out else None,
                 outcome=case.status.value,
                 recovered_amount=recovered_amount if recovered else 0.0,
+            )
+            # Recovery Analyst Audit Log
+            self.recovery_repo.create_audit_log(
+                AuditLog(
+                    id=f"log_{uuid.uuid4().hex[:14]}",
+                    case_id=case.id,
+                    agent="Recovery Analyst",
+                    step_name="PLAYBOOK_LEARNING_WRITEBACK",
+                    input_summary=f"Case: {case.id}, Reason: {failure.failure_reason.value}, Outcome: {case.status.value}",
+                    output_summary=f"Stored case in ChromaDB recovery_playbook for grounded RAG precedent retrieval (Recovered: ₹{recovered_amount:,.2f})",
+                    decision="PLAYBOOK_UPDATED",
+                    confidence=1.0,
+                )
             )
         except Exception as e:
             logger.error(f"Failed to write back case {case.id} to recovery playbook: {e}")

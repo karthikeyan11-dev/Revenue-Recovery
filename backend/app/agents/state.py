@@ -25,3 +25,4 @@ class RecoveryAgentState(TypedDict):
     cost: float
     details: str
     communication_event_data: dict[str, Any] | None
+    reproposal_count: int

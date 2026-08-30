@@ -19,6 +19,8 @@ class LLMClient:
     gracefully falls back to deterministic contextual templates if offline, uncredited, or misconfigured.
     """
 
+    _circuit_broken_until: float = 0.0
+
     @classmethod
     def generate_reasoning(
         cls,
@@ -39,6 +41,11 @@ class LLMClient:
             except Exception as e:
                 logger.warning(f"Mock provider error: {e}")
                 return fallback_text
+
+        # Check circuit breaker (if rate-limited recently, use contextual fallback immediately)
+        import time
+        if time.time() < cls._circuit_broken_until:
+            return fallback_text
 
         # Check for unconfigured / placeholder keys
         if not active_key or active_key.startswith("mock-dev-key") or "your_" in active_key:
@@ -63,8 +70,11 @@ class LLMClient:
             return fallback_text
 
         except Exception as e:
-            # Mask any credentials from exception messages
             err_msg = str(e)
+            if "429" in err_msg or "rate limit" in err_msg.lower():
+                cls._circuit_broken_until = time.time() + 60.0  # Trip circuit for 60s
+
+            # Mask any credentials from exception messages
             if active_key and active_key in err_msg:
                 err_msg = err_msg.replace(active_key, "***")
 

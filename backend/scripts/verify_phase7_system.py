@@ -107,9 +107,6 @@ def verify_phase7():
         email="ananya@example.com",
         phone="+919800011122",
         segment=CustomerSegment.HIGH_VALUE,
-        ltv=75000.0,
-        churn_probability=0.10,
-        preferred_channel=CommunicationChannel.WHATSAPP,
     )
     db.add(constructed_cust)
     db.commit()

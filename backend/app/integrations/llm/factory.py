@@ -7,6 +7,7 @@ from app.integrations.llm.base import BaseLLMProvider
 from app.integrations.llm.google import GoogleProvider
 from app.integrations.llm.mock import MockProvider
 from app.integrations.llm.openai import OpenAIProvider
+from app.integrations.llm.openrouter import OpenRouterProvider
 
 logger = logging.getLogger("app.integrations.llm.factory")
 
@@ -23,11 +24,13 @@ def _create_provider_instance(provider: str, model: str, key: str) -> BaseLLMPro
         return OpenAIProvider(model=model, api_key=key)
     elif provider == "google":
         return GoogleProvider(model=model, api_key=key)
+    elif provider == "openrouter":
+        return OpenRouterProvider(model=model, api_key=key)
     elif provider == "mock":
         return MockProvider(model=model, api_key=key)
     else:
         raise ValueError(
-            f"Unsupported LLM_PROVIDER '{provider}'. Supported providers are: anthropic, openai, google, mock"
+            f"Unsupported LLM_PROVIDER '{provider}'. Supported providers are: anthropic, openai, google, openrouter, mock"
         )
 
 

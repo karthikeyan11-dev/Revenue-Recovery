@@ -87,10 +87,16 @@ class ActionExecutor:
                 details=message,
             )
 
-        # 2. WhatsApp Interactive Outreach
-        if action_type == ActionType.SEND_WHATSAPP or (
-            action_type == ActionType.OFFER_INCENTIVE and channel == "WHATSAPP"
-        ):
+        # Determine target channel
+        target_channel = (channel or "").upper()
+        is_whatsapp = (
+            action_type == ActionType.SEND_WHATSAPP
+            or target_channel in ["WHATSAPP", CommunicationChannel.WHATSAPP.value]
+            or (action_type in [ActionType.SEND_PAYMENT_LINK, ActionType.OFFER_INCENTIVE] and target_channel != "EMAIL")
+        )
+
+        # 2. WhatsApp Interactive Outreach (1-Click UPI Payment Link)
+        if is_whatsapp:
             has_discount = incentive_percent > 0
             coupon = IncentiveService.generate_coupon(incentive_percent) if has_discount else None
             incentive_cost = (
@@ -104,7 +110,9 @@ class ActionExecutor:
 
             msg_content = f"Hi! We noticed your transaction of ₹{amount:,.2f} didn't go through."
             if coupon:
-                msg_content += f" Use code {coupon} for {incentive_percent:.0f}% off to retry now: https://rzp.io/l/recov"
+                msg_content += f" Use code {coupon} for {incentive_percent:.0f}% off to complete payment via UPI: https://rzp.io/l/recov"
+            else:
+                msg_content += " Click here to complete 1-click Razorpay UPI payment: https://rzp.io/l/recov"
 
             return ExecutionResult(
                 outcome=ActionOutcome.SUCCESS if recovered else ActionOutcome.FAILED,
@@ -124,7 +132,8 @@ class ActionExecutor:
         if (
             action_type == ActionType.SEND_EMAIL
             or action_type == ActionType.SEND_PAYMENT_LINK
-            or (action_type == ActionType.OFFER_INCENTIVE and channel == "EMAIL")
+            or action_type == ActionType.OFFER_INCENTIVE
+            or target_channel in ["EMAIL", CommunicationChannel.EMAIL.value]
         ):
             has_discount = incentive_percent > 0
             coupon = IncentiveService.generate_coupon(incentive_percent) if has_discount else None
@@ -139,7 +148,9 @@ class ActionExecutor:
 
             msg_content = f"Payment update for Order: ₹{amount:,.2f}."
             if coupon:
-                msg_content += f" Apply code {coupon} ({incentive_percent:.0f}% discount)."
+                msg_content += f" Apply code {coupon} ({incentive_percent:.0f}% discount) to complete payment: https://rzp.io/l/recov"
+            else:
+                msg_content += " Click here to complete payment: https://rzp.io/l/recov"
 
             return ExecutionResult(
                 outcome=ActionOutcome.SUCCESS if recovered else ActionOutcome.FAILED,

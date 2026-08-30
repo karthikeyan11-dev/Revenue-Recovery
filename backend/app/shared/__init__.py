@@ -14,7 +14,6 @@ from app.shared.enums import (
     ActionType,
     CaseStatus,
     CommunicationChannel,
-    CustomerSegment,
     FailureReason,
     LeakType,
     PaymentMethod,
@@ -35,7 +34,6 @@ from app.shared.exceptions import (
 from app.shared.utils import calculate_laplace_confidence, format_currency_inr
 
 __all__ = [
-    "CustomerSegment",
     "CommunicationChannel",
     "PaymentMethod",
     "TransactionStatus",

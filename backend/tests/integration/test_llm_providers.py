@@ -11,7 +11,8 @@ from app.integrations.llm.factory import get_llm_provider
 from app.integrations.llm.google import GoogleProvider
 from app.integrations.llm.mock import MockProvider
 from app.integrations.llm.openai import OpenAIProvider
-from app.models.customer import CommunicationChannel, Customer, CustomerSegment
+from app.integrations.llm.openrouter import OpenRouterProvider
+from app.models.customer import CommunicationChannel, Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.transaction import Transaction, TransactionStatus
 
@@ -33,10 +34,55 @@ def test_provider_factory_instantiates_correct_classes():
     assert isinstance(p_google, GoogleProvider)
     assert p_google.model == "gemini-1.5-flash"
 
+    # OpenRouter
+    p_openrouter = get_llm_provider("openrouter", "google/gemini-2.0-flash-001", "sk-or-v1-test-key")
+    assert isinstance(p_openrouter, OpenRouterProvider)
+    assert p_openrouter.model == "google/gemini-2.0-flash-001"
+
     # Mock
     p_mock = get_llm_provider("mock", "mock-custom-model", "test-key")
     assert isinstance(p_mock, MockProvider)
     assert p_mock.model == "mock-custom-model"
+
+
+def test_openrouter_missing_api_key_raises_error():
+    """Verify that empty or placeholder OpenRouter API key raises clear ValueError."""
+    with pytest.raises(ValueError, match="OPENROUTER_API_KEY is required"):
+        OpenRouterProvider(model="anthropic/claude-3.5-sonnet", api_key="")
+
+    with pytest.raises(ValueError, match="OPENROUTER_API_KEY is required"):
+        OpenRouterProvider(model="anthropic/claude-3.5-sonnet", api_key="your_openrouter_api_key_here")
+
+
+def test_openrouter_model_passthrough_and_headers():
+    """Verify OpenRouter preserves arbitrary vendor/model identifier and sets appropriate headers."""
+    provider = OpenRouterProvider(model="meta-llama/llama-3.3-70b-instruct", api_key="sk-or-v1-valid-token")
+    assert provider.model == "meta-llama/llama-3.3-70b-instruct"
+    assert str(provider.client.base_url).rstrip("/") == "https://openrouter.ai/api/v1"
+    assert provider.client.default_headers.get("HTTP-Referer") == "https://github.com/karthikeyan11-dev/Revenue-Recovery"
+
+
+def test_openrouter_generate_reasoning_mocked(monkeypatch):
+    """Verify OpenRouter completions flow correctly into generated reasoning string."""
+    provider = OpenRouterProvider(model="google/gemini-2.0-flash-001", api_key="sk-or-v1-valid-token")
+
+    class MockMessage:
+        content = "Strategic analysis via OpenRouter: Recover transaction via WhatsApp."
+
+    class MockChoice:
+        message = MockMessage()
+
+    class MockCompletion:
+        choices = [MockChoice()]
+
+    monkeypatch.setattr(
+        provider.client.chat.completions,
+        "create",
+        lambda *args, **kwargs: MockCompletion(),
+    )
+
+    reasoning = provider.generate_reasoning("system prompt", "user prompt")
+    assert "Strategic analysis via OpenRouter" in reasoning
 
 
 def test_unsupported_provider_raises_error():
@@ -79,10 +125,7 @@ def test_agents_use_configured_provider_and_produce_pydantic_outputs(monkeypatch
         id="cust_test_prov",
         name="Ananya Sharma",
         email="ananya@example.com",
-        segment=CustomerSegment.LOYAL,
-        ltv=45000.0,
-        preferred_channel=CommunicationChannel.WHATSAPP,
-        churn_probability=0.15,
+        phone="+919876543210",
     )
     txn = Transaction(
         id="txn_test_prov",
@@ -106,11 +149,13 @@ def test_agents_use_configured_provider_and_produce_pydantic_outputs(monkeypatch
     assert "MockLLM Reasoning" in det_out.reasoning
 
     # 2. Customer Intelligence
-    intel_out = CustomerIntelligenceAgent.profile(customer)
+    intel_out = CustomerIntelligenceAgent.profile(customer, failure=failure)
     assert intel_out.customer_id == customer.id
     assert "MockLLM Reasoning" in intel_out.insights
 
     # 3. Recovery Strategist
-    strat_out = RecoveryStrategistAgent.propose_action(det_out, intel_out)
+    strat_out = RecoveryStrategistAgent.propose_action(
+        det_out, intel_out, failure_reason=failure.failure_reason
+    )
     assert strat_out.action_type is not None
     assert "MockLLM Reasoning" in strat_out.reasoning

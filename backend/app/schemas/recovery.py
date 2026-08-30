@@ -2,7 +2,6 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.models.customer import CustomerSegment
 from app.models.recovery_action import ActionOutcome, ActionType, PolicyDecision
 from app.models.recovery_case import CaseStatus
 from app.models.revenue_leak import LeakType
@@ -38,16 +37,23 @@ class RecoveryCaseSummary(BaseModel):
     customer_id: str
     customer_name: str
     customer_email: str
-    customer_segment: CustomerSegment
     leak_type: LeakType
     leak_amount: float
+    amount_at_risk: float | None = None
+    failure_reason: str | None = None
+    failure_code: str | None = None
     recoverability_score: float
     status: CaseStatus
-    recovered_amount: float
-    recovery_cost: float
+    priority: str = "MEDIUM"  # HIGH | MEDIUM | LOW derived dynamically
+    recovery_rate_percent: float = 0.0
+    recovered_amount: float = 0.0
+    recovery_cost: float = 0.0
+    payer_reliability_score: float | None = None
     has_sufficient_precedent: bool = True
     precedent_count: int = 0
     promise_status: str | None = None
+    agents_involved: list[str] = []
+    current_step: str = "Completed"
     created_at: datetime
     resolved_at: datetime | None = None
 
@@ -62,6 +68,7 @@ class CasesListResponse(BaseModel):
     items: list[RecoveryCaseSummary]
     total: int
     open_count: int
+    in_progress_count: int = 0
     recovered_count: int
     escalated_count: int
     failed_count: int

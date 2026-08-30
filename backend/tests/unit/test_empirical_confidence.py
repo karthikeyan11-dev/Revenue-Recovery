@@ -6,7 +6,7 @@ from sqlalchemy.pool import StaticPool
 from app.agents.customer_intelligence import CustomerIntelligenceAgent
 from app.agents.revenue_detective import RevenueDetectiveAgent
 from app.database import Base
-from app.models.customer import CommunicationChannel, Customer, CustomerSegment
+from app.models.customer import CommunicationChannel, Customer
 from app.models.payment_failure import FailureReason, PaymentFailure
 from app.models.recovery_case import CaseStatus, RecoveryCase
 from app.models.revenue_leak import LeakType, RevenueLeak
@@ -53,19 +53,13 @@ def test_empirical_sql_aggregate_queries(test_db):
         id="cust_loyal",
         name="Loyal User",
         email="loyal@example.com",
-        segment=CustomerSegment.LOYAL,
-        ltv=50000.0,
-        churn_probability=0.10,
-        preferred_channel=CommunicationChannel.WHATSAPP,
+        phone="+919876543211",
     )
     c_at_risk = Customer(
         id="cust_at_risk",
         name="At Risk User",
         email="risk@example.com",
-        segment=CustomerSegment.AT_RISK,
-        ltv=8000.0,
-        churn_probability=0.75,
-        preferred_channel=CommunicationChannel.EMAIL,
+        phone="+919876543212",
     )
     test_db.add_all([c_loyal, c_at_risk])
     test_db.commit()
@@ -151,29 +145,22 @@ def test_empirical_sql_aggregate_queries(test_db):
     # Laplace confidence: (1 + 2) / (4 + 4) = 3 / 8 = 0.3750
     assert repo.calculate_laplace_confidence(exp_successes, exp_total) == 0.3750
 
-    # Query segment stats
-    loyal_succ, loyal_total = repo.get_empirical_segment_recovery_stats(CustomerSegment.LOYAL)
-    assert loyal_total == 3
-    assert loyal_succ == 2
-    assert repo.calculate_laplace_confidence(loyal_succ, loyal_total) == 0.5714
-
-    risk_succ, risk_total = repo.get_empirical_segment_recovery_stats(CustomerSegment.AT_RISK)
-    assert risk_total == 4
-    assert risk_succ == 1
-    assert repo.calculate_laplace_confidence(risk_succ, risk_total) == 0.3750
+    # Aggregate recovery stats
+    agg_succ, agg_total = repo.get_empirical_customer_risk_stats()
+    assert agg_total == 7
+    assert agg_succ == 3
+    # Laplace confidence: (3 + 2) / (7 + 4) = 5 / 11 = 0.4545
+    assert repo.calculate_laplace_confidence(agg_succ, agg_total) == 0.4545
 
 
 def test_agents_compute_empirical_confidence(test_db):
     """Verify that RevenueDetective and CustomerIntelligence agents produce genuine empirical confidence."""
-    # Seed 5 resolved cases for INSUFFICIENT_FUNDS (4 recovered, 1 failed) under HIGH_VALUE segment
+    # Seed 5 resolved cases for INSUFFICIENT_FUNDS (4 recovered, 1 failed)
     cust = Customer(
         id="cust_hv",
         name="High Value VIP",
         email="vip@example.com",
-        segment=CustomerSegment.HIGH_VALUE,
-        ltv=90000.0,
-        churn_probability=0.08,
-        preferred_channel=CommunicationChannel.WHATSAPP,
+        phone="+919876543210",
     )
     test_db.add(cust)
     test_db.commit()
@@ -242,8 +229,10 @@ def test_agents_compute_empirical_confidence(test_db):
     assert det_out.llm_stated_confidence is not None
 
     # 2. Customer Intelligence
-    intel_out = CustomerIntelligenceAgent.profile(cust, db=test_db)
+    intel_out = CustomerIntelligenceAgent.profile(cust, failure=new_pf, db=test_db)
     # 4 successes / 5 total -> (4 + 2) / (5 + 4) = 6 / 9 = 0.6667
     assert intel_out.confidence == 0.6667
     assert intel_out.precedent_sample_size == 5
     assert intel_out.llm_stated_confidence is not None
+    assert intel_out.payer_reliability_score is not None
+    assert "WHATSAPP" in intel_out.available_channels

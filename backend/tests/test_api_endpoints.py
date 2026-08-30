@@ -104,3 +104,31 @@ def test_data_generation_and_simulation_flow(client):
     assert agent_res.status_code == 200
     agent_data = agent_res.json()
     assert len(agent_data["activities"]) > 0
+    assert "stats" in agent_data
+
+    # 8. Fetch Dashboard Comparison (Baseline vs AI)
+    comp_res = client.get("/dashboard/comparison")
+    assert comp_res.status_code == 200
+    comp_data = comp_res.json()
+    assert "baseline" in comp_data
+    assert "ai" in comp_data
+
+    # 9. Fetch Simulations History
+    sim_res = client.get("/simulations/history?limit=10")
+    assert sim_res.status_code == 200
+    sim_data = sim_res.json()
+    assert len(sim_data["simulations"]) > 0
+
+    # 10. Fetch Promises List
+    ptp_res = client.get("/promises")
+    assert ptp_res.status_code == 200
+    ptp_data = ptp_res.json()
+    assert "items" in ptp_data
+
+    # 11. Fetch Detailed Playbook Stats
+    pb_res = client.get("/agents/playbook/stats")
+    assert pb_res.status_code == 200
+    pb_data = pb_res.json()
+    assert pb_data["total_cases"] >= 0
+    assert "failure_reasons" in pb_data
+    assert "actions" in pb_data

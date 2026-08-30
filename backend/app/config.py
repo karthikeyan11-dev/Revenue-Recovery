@@ -54,6 +54,10 @@ class Settings(BaseSettings):
         default="",
         description="API Key for Google Gemini models",
     )
+    OPENROUTER_API_KEY: str = Field(
+        default="",
+        description="API Key for OpenRouter unified multi-model API",
+    )
 
     # Razorpay Integration
     RAZORPAY_KEY_ID: str = Field(
@@ -95,7 +99,7 @@ class Settings(BaseSettings):
     @classmethod
     def validate_provider_name(cls, v: str) -> str:
         provider = v.strip().lower()
-        allowed = {"anthropic", "openai", "google", "mock"}
+        allowed = {"anthropic", "openai", "google", "openrouter", "mock"}
         if provider not in allowed:
             raise ValueError(
                 f"Unsupported LLM_PROVIDER '{v}'. Must be one of: {', '.join(sorted(allowed))}"
@@ -111,6 +115,8 @@ class Settings(BaseSettings):
             return self.OPENAI_API_KEY.strip()
         elif provider == "google":
             return self.GOOGLE_API_KEY.strip()
+        elif provider == "openrouter":
+            return self.OPENROUTER_API_KEY.strip()
         elif provider == "mock":
             return "mock-key"
         return ""
@@ -120,7 +126,7 @@ class Settings(BaseSettings):
         provider = self.LLM_PROVIDER.strip().lower()
         key = self.get_active_api_key()
 
-        if provider in {"anthropic", "openai", "google"}:
+        if provider in {"anthropic", "openai", "google", "openrouter"}:
             if not key or key.startswith("mock-dev-key") or "your_" in key:
                 logger.warning(
                     f"Selected LLM_PROVIDER '{provider}' has no active API key configured. "

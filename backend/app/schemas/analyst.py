@@ -22,6 +22,9 @@ class StrategyMetrics(BaseModel):
     rejected_actions_count: int = Field(
         ge=0, description="Count of actions blocked by policy engine"
     )
+    simulation_id: str | None = None
+    simulation_name: str | None = None
+    step_telemetry: list[dict] = []
 
 
 class BaselineComparisonResult(BaseModel):

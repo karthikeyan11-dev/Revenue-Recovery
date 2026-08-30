@@ -15,6 +15,7 @@ from app.models.payment_failure import PaymentFailure
 from app.models.promise_to_pay import PromiseStatus, PromiseToPay
 from app.models.recovery_action import PolicyDecision, RecoveryAction
 from app.models.recovery_case import CaseStatus, RecoveryCase
+from app.models.transaction import Transaction
 from app.policy.engine import PolicyEngine
 from app.policy.rules import MAX_PROMISE_FOLLOWUPS, RULE_MAX_PROMISE_FOLLOWUPS
 from app.repositories.recovery_repository import RecoveryRepository
@@ -100,13 +101,12 @@ class PromiseTrackerService:
             try:
                 RecoveryAnalystAgent.write_back_resolved_case(
                     case_id=case.id,
-                    segment=customer.segment.value if customer.segment else "REGULAR",
                     failure_reason=failure.failure_reason.value if failure else "UNKNOWN",
                     action_taken="PROMISE_TO_PAY",
                     channel=(
-                        customer.preferred_channel.value
-                        if customer.preferred_channel
-                        else "WHATSAPP"
+                        "WHATSAPP"
+                        if (customer and customer.phone)
+                        else "EMAIL"
                     ),
                     outcome="SUCCESS",
                     recovered_amount=promise.committed_amount,
@@ -120,16 +120,19 @@ class PromiseTrackerService:
             )
             return promise, case
 
-        # 2. Promise BROKEN
+        # -------------------------------------------------------------
+        # BRANCH B: Promise BROKEN -> Check stopping rule
+        # -------------------------------------------------------------
         promise.status = PromiseStatus.BROKEN
-        promise.resolved_at = datetime.utcnow()
-
         logger.warning(
             f"[PromiseTracker] Promise {promise.id} BROKEN (Case {case.id}). Current follow_ups: {promise.follow_up_count}"
         )
 
-        # Check Stopping Rule: If already had 1 follow-up, MUST escalate to human review immediately
+        # 1. Stopping Rule Check: Max follow-ups exceeded?
         if promise.follow_up_count >= MAX_PROMISE_FOLLOWUPS:
+            logger.info(
+                f"[PromiseTracker] Stopping rule hit: Promise {promise.id} reached max {MAX_PROMISE_FOLLOWUPS} follow-ups. Escalating to human."
+            )
             case.status = CaseStatus.ESCALATED
             case.resolved_at = datetime.utcnow()
 
@@ -137,46 +140,55 @@ class PromiseTrackerService:
                 AuditLog(
                     id=f"log_{uuid.uuid4().hex[:14]}",
                     case_id=case.id,
-                    agent="Policy Engine",
+                    agent="Promise Tracker",
                     step_name="STOPPING_RULE_ENFORCEMENT",
-                    input_summary=f"Promise {promise.id} broke again after {promise.follow_up_count} follow-up(s)",
-                    output_summary=f"Stopping rule enforced ({RULE_MAX_PROMISE_FOLLOWUPS}): Max {MAX_PROMISE_FOLLOWUPS} automated follow-up allowed. Mandatory human escalation.",
+                    input_summary=f"Promise {promise.id} broken. Follow-ups attempted: {promise.follow_up_count}",
+                    output_summary=f"Max promise follow-ups exceeded ({RULE_MAX_PROMISE_FOLLOWUPS}). Escalating to human operations team for manual intervention.",
                     decision="ESCALATED",
                     confidence=1.0,
                     empirical_confidence=1.0,
                 )
             )
-
             self.db.commit()
-            logger.warning(
-                f"[PromiseTracker] STOPPING RULE ENFORCED for Case {case.id}. Escalated to human queue."
-            )
             return promise, case
 
-        # 3. First Break: Execute exactly ONE bounded follow-up via Strategist + Policy + Executor
+        # 2. Allow exactly ONE follow-up: Increment counter and re-invoke Strategist
         promise.follow_up_count += 1
         logger.info(
             f"[PromiseTracker] Initiating Follow-Up #{promise.follow_up_count} for Case {case.id}"
         )
 
-        # Detective & Customer Intelligence fresh profile
-        det_out = RevenueDetectiveAgent.analyze(failure, db=self.db)
-        intel_out = CustomerIntelligenceAgent.profile(customer, db=self.db)
+        # Fetch failure & leak for re-dispatch
+        failure = (
+            self.db.query(PaymentFailure)
+            .join(Transaction, PaymentFailure.transaction_id == Transaction.id)
+            .filter(Transaction.customer_id == case.customer_id)
+            .order_by(PaymentFailure.created_at.desc())
+            .first()
+        )
+        leak = case.revenue_leak
 
-        # Recovery Strategist RAG reasoning & empirical confidence
+        det_out = RevenueDetectiveAgent.analyze(failure, db=self.db) if failure else None
+        intel_out = CustomerIntelligenceAgent.profile(customer, failure=failure, db=self.db) if customer else None
+
+        if not det_out or not intel_out:
+            logger.error(f"Cannot generate follow-up strategy for promise {promise_id}: missing detective or intel")
+            return promise, case
+
         strat_out = RecoveryStrategistAgent.propose_action(
             detective_output=det_out,
             intel_output=intel_out,
-            failure_reason=failure.failure_reason.value if failure else None,
+            failure_reason=failure.failure_reason.value if failure else "UNKNOWN",
+            is_reproposal=True,
         )
 
-        # Policy Engine Gate (with previous_promise_followups=0 for this first follow-up)
+        # Evaluate policy
         policy_res = PolicyEngine.evaluate(
             proposal=strat_out,
-            amount=leak.amount,
-            previous_attempts=failure.attempt_number + 1,
-            customer_churn_risk=intel_out.churn_probability,
-            previous_promise_followups=0,
+            amount=leak.amount if leak else 0.0,
+            previous_attempts=failure.attempt_number + 1 if failure else 2,
+            payer_reliability_score=intel_out.payer_reliability_score,
+            previous_promise_followups=promise.follow_up_count - 1,
         )
 
         # Strategist Audit Log
@@ -186,7 +198,7 @@ class PromiseTrackerService:
                 case_id=case.id,
                 agent="Recovery Strategist",
                 step_name="BROKEN_PROMISE_FOLLOWUP_STRATEGY",
-                input_summary=f"Promise {promise.id} BROKEN. Profile: {intel_out.segment.value}, Precedents: n={strat_out.retrieved_precedent_count}",
+                input_summary=f"Promise {promise.id} BROKEN. Reliability: {intel_out.payer_reliability_score:.1%}, Precedents: n={strat_out.retrieved_precedent_count}",
                 output_summary=f"Follow-up Action: {strat_out.action_type.value} (Empirical Conf: {strat_out.confidence:.4f})",
                 decision=strat_out.action_type.value,
                 confidence=strat_out.confidence,
@@ -214,9 +226,9 @@ class PromiseTrackerService:
         exec_res = ActionExecutor.execute(
             action_type=strat_out.action_type,
             policy_decision=policy_res.decision,
-            amount=leak.amount,
-            failure_reason=failure.failure_reason,
-            attempt_number=failure.attempt_number + 1,
+            amount=leak.amount if leak else 0.0,
+            failure_reason=failure.failure_reason if failure else None,
+            attempt_number=failure.attempt_number + 1 if failure else 1,
             incentive_percent=strat_out.incentive_percent,
             retry_delay_hours=strat_out.retry_delay_hours,
             channel=strat_out.channel,
@@ -233,7 +245,7 @@ class PromiseTrackerService:
             incentive_percent=strat_out.incentive_percent,
             retry_delay_hours=strat_out.retry_delay_hours,
             outcome=exec_res.outcome,
-            execution_details=f"[Promise Follow-Up #1] {exec_res.details}",
+            execution_details=f"[Promise Follow-Up #{promise.follow_up_count}] {exec_res.details}",
             executed_at=datetime.utcnow(),
         )
         self.recovery_repo.create_action(action_rec)
@@ -268,7 +280,6 @@ class PromiseTrackerService:
         try:
             RecoveryAnalystAgent.write_back_resolved_case(
                 case_id=case.id,
-                segment=customer.segment.value if customer.segment else "REGULAR",
                 failure_reason=failure.failure_reason.value if failure else "UNKNOWN",
                 action_taken=strat_out.action_type.value,
                 channel=strat_out.channel,
@@ -301,7 +312,6 @@ class PromiseTrackerService:
                     customer_id=cust.id if cust else None,
                     customer_name=cust.name if cust else "Unknown",
                     customer_email=cust.email if cust else "unknown@example.com",
-                    customer_segment=cust.segment.value if cust and cust.segment else "REGULAR",
                     committed_amount=p.committed_amount,
                     committed_date=p.committed_date,
                     status=p.status,

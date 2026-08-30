@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import SessionLocal, get_db
 from app.integrations.razorpay.client import RazorpayClient
-from app.models.customer import CommunicationChannel, Customer, CustomerSegment
+from app.models.customer import CommunicationChannel, Customer
 from app.models.payment_failure import PaymentFailure
 from app.models.promise_to_pay import PromiseStatus
 from app.models.recovery_case import CaseStatus, RecoveryCase
@@ -199,10 +199,6 @@ async def handle_razorpay_webhook(
                 name=notes.get("customer_name", "Valued Customer"),
                 email=email,
                 phone=contact,
-                segment=CustomerSegment.REGULAR,
-                ltv=max(15000.0, amount_rupees * 3),
-                churn_probability=0.20,
-                preferred_channel=CommunicationChannel.WHATSAPP,
             )
             db.add(customer)
             db.commit()
