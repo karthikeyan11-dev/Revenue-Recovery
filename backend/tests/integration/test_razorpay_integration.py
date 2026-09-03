@@ -34,7 +34,6 @@ def test_db():
     Base.metadata.create_all(bind=engine)
     db = TestingSession()
     # Seed ChromaDB playbook
-    RecoveryPlaybookService.reset_playbook()
     for i in range(6):
         RecoveryPlaybookService.insert_resolved_case(
             case_id=f"seed_test_rzp_{i}",
@@ -48,7 +47,6 @@ def test_db():
     yield db
     db.close()
     Base.metadata.drop_all(bind=engine)
-    RecoveryPlaybookService.reset_playbook()
 
 
 @pytest.fixture

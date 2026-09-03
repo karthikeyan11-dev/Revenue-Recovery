@@ -49,6 +49,27 @@ class DashboardMetricsResponse(BaseModel):
     active_cohort_segments_count: int = Field(
         default=6, description="Number of active customer cohort segments"
     )
+    total_cases_analyzed: int = Field(
+        default=0, description="Total failed transaction cases in cohort"
+    )
+    ai_recovered_cases_count: int = Field(
+        default=0, description="Number of cases recovered by AI"
+    )
+    ai_case_recovery_rate_percent: float = Field(
+        default=0.0, description="AI case recovery success rate %"
+    )
+    baseline_recovered_cases_count: int = Field(
+        default=0, description="Number of cases recovered by baseline"
+    )
+    baseline_case_recovery_rate_percent: float = Field(
+        default=0.0, description="Baseline case recovery success rate %"
+    )
+    case_recovery_uplift_count: int = Field(
+        default=0, description="Net extra cases recovered by AI over baseline"
+    )
+    case_recovery_uplift_percent: float = Field(
+        default=0.0, description="Net case recovery rate % uplift"
+    )
     comparison_chart: list[RecoveryComparisonChartItem] = Field(
         default=[], description="Segment-by-segment comparison"
     )
@@ -70,12 +91,15 @@ class StrategyComparisonSummary(BaseModel):
     net_roi_percent: float = Field(default=0.0)
     cases_count: int = Field(ge=0)
     recovered_cases_count: int = Field(ge=0)
+    case_recovery_rate_percent: float = Field(default=0.0)
 
 
 class UpliftMetrics(BaseModel):
     extra_revenue_recovered_inr: float
     recovery_rate_uplift_percent: float
     net_roi_percent: float
+    extra_cases_recovered: int = Field(default=0)
+    case_recovery_rate_uplift_percent: float = Field(default=0.0)
 
 
 class DashboardComparisonResponse(BaseModel):
@@ -83,3 +107,48 @@ class DashboardComparisonResponse(BaseModel):
     ai: StrategyComparisonSummary
     uplift: UpliftMetrics
     key_findings: list[str] = Field(default=[])
+
+
+class DiagnosticMetricsPayload(BaseModel):
+    total_at_risk: float
+    ai_recovered: float
+    ai_recovery_rate: float
+    baseline_recovered: float
+    baseline_recovery_rate: float
+    rev_diff_inr: float
+    rev_rate_diff_percent: float
+    total_cases: int
+    ai_recovered_cases: int
+    ai_case_rate: float
+    baseline_recovered_cases: int
+    baseline_case_rate: float
+    case_diff_count: int
+    case_rate_diff_percent: float
+    escalated_cases_count: int
+    escalated_revenue_inr: float
+
+
+class EscalatedCaseSummary(BaseModel):
+    case_id: str
+    amount: float
+    failure_reason: str
+    policy_rule: str
+    reasoning: str
+
+
+class RecoveryDiagnosticResponse(BaseModel):
+    verdict: str  # "AI_AHEAD" | "BASELINE_AHEAD" | "BALANCED"
+    headline: str
+    summary: str
+    primary_reasons: list[str]
+    metrics: DiagnosticMetricsPayload
+    escalated_cases: list[EscalatedCaseSummary] = Field(default=[])
+    recommendation: str
+    generated_at: str
+    llm_reasoning_status: str = Field(default="live", description="'live', 'cached', or 'unavailable'")
+    real_model_attribution: str | None = Field(
+        default=None, description="Actual model and provider name used for generation"
+    )
+    cohort_run_id: str = Field(default="", description="Unique fingerprint of this cohort batch")
+
+

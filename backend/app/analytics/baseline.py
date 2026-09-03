@@ -35,7 +35,7 @@ class BaselineSimulator:
         effective_prob = base_prob * decay
 
         if failure_reason == FailureReason.INSUFFICIENT_FUNDS:
-            effective_prob = min(0.90, effective_prob + 0.15)  # 24h banking recharge boost
+            effective_prob = min(0.60, effective_prob + 0.15)  # 24h banking recharge boost
 
         if failure_id:
             seed_str = f"baseline_eval_{failure_id}_{failure_reason.value if hasattr(failure_reason, 'value') else failure_reason}"

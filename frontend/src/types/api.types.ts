@@ -9,6 +9,13 @@ export interface DashboardMetricsResponse {
   baseline_recovery_rate: number;
   rate_uplift_percent: number;
   policy_interventions_count: number;
+  total_cases_analyzed?: number;
+  ai_recovered_cases_count?: number;
+  ai_case_recovery_rate_percent?: number;
+  baseline_recovered_cases_count?: number;
+  baseline_case_recovery_rate_percent?: number;
+  case_recovery_uplift_count?: number;
+  case_recovery_uplift_percent?: number;
   comparison_chart: Array<{
     segment: string;
     total_at_risk_inr: number;
@@ -389,3 +396,46 @@ export interface PlaybookStatsDetail {
   outcomes?: PlaybookOutcomesSummary;
   actions: PlaybookActionBreakdownItem[];
 }
+
+export interface DiagnosticMetricsPayload {
+  total_at_risk: number;
+  ai_recovered: number;
+  ai_recovery_rate: number;
+  baseline_recovered: number;
+  baseline_recovery_rate: number;
+  rev_diff_inr: number;
+  rev_rate_diff_percent: number;
+  total_cases: number;
+  ai_recovered_cases: number;
+  ai_case_rate: number;
+  baseline_recovered_cases: number;
+  baseline_case_rate: number;
+  case_diff_count: number;
+  case_rate_diff_percent: number;
+  escalated_cases_count: number;
+  escalated_revenue_inr: number;
+}
+
+export interface EscalatedCaseSummary {
+  case_id: string;
+  amount: number;
+  failure_reason: string;
+  policy_rule: string;
+  reasoning: string;
+}
+
+export interface RecoveryDiagnosticResponse {
+  verdict: 'AI_AHEAD' | 'BASELINE_AHEAD' | 'BALANCED';
+  headline: string;
+  summary: string;
+  primary_reasons: string[];
+  metrics: DiagnosticMetricsPayload;
+  escalated_cases: EscalatedCaseSummary[];
+  recommendation: string;
+  generated_at: string;
+  llm_reasoning_status?: 'live' | 'cached' | 'unavailable';
+  real_model_attribution?: string | null;
+  cohort_run_id?: string;
+}
+
+

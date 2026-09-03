@@ -53,10 +53,10 @@ export const DashboardSegmentComparisonChart: React.FC<DashboardSegmentCompariso
                 axisLine={false}
               />
               <Tooltip
-                formatter={(value: number | string | readonly (number | string)[] | undefined) => {
-                  const num = typeof value === 'number' ? value : Number(value || 0);
-                  return [formatCurrency(num), ''];
-                }}
+                formatter={(value: unknown, name: unknown) => [
+                  formatCurrency(Number(value) || 0),
+                  String(name ?? ''),
+                ]}
                 contentStyle={{
                   backgroundColor: '#ffffff',
                   borderRadius: '8px',
@@ -84,6 +84,11 @@ export const DashboardSegmentComparisonChart: React.FC<DashboardSegmentCompariso
               />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+        <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px] text-slate-500">
+          <p>
+            <strong className="text-slate-700 font-semibold">Policy Guardrail Note:</strong> In categories with whale transactions (&gt;₹25,000), revenue is safely held in the <span className="font-semibold text-indigo-600">Human Escalation Queue</span> to prevent chargeback penalties, while baseline blind retries risk merchant fees.
+          </p>
         </div>
       </CardContent>
     </Card>

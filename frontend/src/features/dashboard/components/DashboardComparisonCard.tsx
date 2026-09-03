@@ -55,7 +55,10 @@ export const DashboardComparisonCard: React.FC<DashboardComparisonCardProps> = (
                 {formatCurrency(baseRecovered)}
               </div>
               <div className="text-xs text-slate-500">
-                Recovery Rate: <span className="font-semibold text-slate-700">{formatPercent(baseRate)}</span>
+                Revenue Rate: <span className="font-semibold text-slate-700">{formatPercent(baseRate)}</span>
+              </div>
+              <div className="text-xs text-slate-600 font-medium">
+                Cases Recovered: <span className="font-semibold text-slate-800">{metrics.baseline_recovered_cases_count ?? 0} / {metrics.total_cases_analyzed ?? 0} ({formatPercent(metrics.baseline_case_recovery_rate_percent ?? 0)})</span>
               </div>
             </div>
             <div className="text-[11px] text-slate-500 space-y-1 pt-1 border-t border-slate-200/60">
@@ -79,13 +82,16 @@ export const DashboardComparisonCard: React.FC<DashboardComparisonCardProps> = (
                 {formatCurrency(aiRecovered)}
               </div>
               <div className="text-xs text-blue-800">
-                Recovery Rate: <span className="font-bold text-blue-900">{formatPercent(aiRate)}</span>
+                Revenue Rate: <span className="font-bold text-blue-900">{formatPercent(aiRate)}</span>
+              </div>
+              <div className="text-xs text-blue-900 font-semibold">
+                Cases Recovered: <span className="font-bold text-blue-700">{metrics.ai_recovered_cases_count ?? 0} / {metrics.total_cases_analyzed ?? 0} ({formatPercent(metrics.ai_case_recovery_rate_percent ?? 0)})</span>
               </div>
             </div>
             <div className="text-[11px] text-slate-600 space-y-1 pt-1 border-t border-blue-200/50">
               <div>• 7-agent specialized LangGraph orchestration</div>
               <div>• Empirical confidence from ChromaDB playbook</div>
-              <div>• Multi-channel dispatch (Hinglish/Email/WhatsApp)</div>
+              <div>• Adaptive multi-rail fallback (Retry → WhatsApp UPI)</div>
             </div>
           </div>
 
@@ -106,6 +112,9 @@ export const DashboardComparisonCard: React.FC<DashboardComparisonCardProps> = (
               </div>
               <div className="text-xs text-emerald-800">
                 Net ROI: <span className="font-bold text-emerald-900">{formatPercent(metrics.net_roi_percent || 0)}</span>
+              </div>
+              <div className="text-xs text-emerald-900 font-bold">
+                Cases Won: <span className="text-emerald-700">+{metrics.case_recovery_uplift_count ?? 0} cases (+{formatPercent(metrics.case_recovery_uplift_percent ?? 0)})</span>
               </div>
             </div>
             <div className="text-[11px] text-slate-600 space-y-1 pt-1 border-t border-emerald-200/60">

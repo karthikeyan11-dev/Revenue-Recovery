@@ -1,5 +1,6 @@
 import type {
   DashboardMetricsResponse,
+  RecoveryDiagnosticResponse,
   CasesListResponse,
   RecoveryCaseDetail,
   AgentActivityFeedResponse,
@@ -39,6 +40,21 @@ export const apiClient = {
     if (params?.date_to) query.set('date_to', params.date_to);
     const qs = query.toString();
     return fetchJson<DashboardMetricsResponse>(`/dashboard/summary${qs ? `?${qs}` : ''}`);
+  },
+
+  getDashboardDiagnostics: (params?: {
+    time_range?: string;
+    date_from?: string;
+    date_to?: string;
+    force_refresh?: boolean;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.time_range) query.set('time_range', params.time_range);
+    if (params?.date_from) query.set('date_from', params.date_from);
+    if (params?.date_to) query.set('date_to', params.date_to);
+    if (params?.force_refresh) query.set('force_refresh', 'true');
+    const qs = query.toString();
+    return fetchJson<RecoveryDiagnosticResponse>(`/dashboard/diagnostics${qs ? `?${qs}` : ''}`);
   },
 
   // 2. Recovery Cases

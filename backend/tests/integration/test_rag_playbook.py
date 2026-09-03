@@ -1,3 +1,6 @@
+import tempfile
+
+import chromadb
 import pytest
 
 from app.agents.recovery_analyst import RecoveryAnalystAgent
@@ -13,10 +16,20 @@ from app.schemas.detective import RevenueDetectiveOutput
 
 @pytest.fixture(autouse=True)
 def clean_playbook():
-    """Ensure ChromaDB playbook starts clean for every test."""
-    RecoveryPlaybookService.reset_playbook()
-    yield
-    RecoveryPlaybookService.reset_playbook()
+    """Isolates ChromaDB to a clean ephemeral temp directory for test execution."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_client = chromadb.PersistentClient(path=tmpdir)
+        old_client = RecoveryPlaybookService._client
+        old_coll = RecoveryPlaybookService._collection
+
+        RecoveryPlaybookService._client = test_client
+        RecoveryPlaybookService._collection = test_client.get_or_create_collection(
+            name="recovery_playbook",
+            metadata={"description": "Isolated test collection"},
+        )
+        yield
+        RecoveryPlaybookService._client = old_client
+        RecoveryPlaybookService._collection = old_coll
 
 
 def test_chroma_playbook_cold_start():

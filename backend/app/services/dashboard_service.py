@@ -3,7 +3,11 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.schemas.dashboard import DashboardComparisonResponse, DashboardMetricsResponse
+from app.schemas.dashboard import (
+    DashboardComparisonResponse,
+    DashboardMetricsResponse,
+    RecoveryDiagnosticResponse,
+)
 from app.services.metrics_calculator import UnifiedMetricsEngine
 
 logger = logging.getLogger("app.services.dashboard")
@@ -38,6 +42,21 @@ class DashboardService:
             date_to=date_to,
         )
 
+    def get_diagnostic_analysis(
+        self,
+        time_range: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        force_refresh: bool = False,
+    ) -> RecoveryDiagnosticResponse:
+        return self.engine.get_diagnostic_analysis(
+            time_range=time_range,
+            date_from=date_from,
+            date_to=date_to,
+            force_refresh=force_refresh,
+        )
+
 
 # Compatibility alias
 AnalyticsService = DashboardService
+

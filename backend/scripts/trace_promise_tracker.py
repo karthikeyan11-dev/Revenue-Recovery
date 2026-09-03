@@ -41,8 +41,7 @@ def main():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
-    # Seed ChromaDB Playbook with 6 precedents to enable autonomous warm strategist action
-    RecoveryPlaybookService.reset_playbook()
+    # Ensure ChromaDB Playbook has precedents for autonomous warm strategist action
     for i in range(6):
         RecoveryPlaybookService.insert_resolved_case(
             case_id=f"seed_precedent_{i}",

@@ -131,17 +131,31 @@ class SyntheticDataGenerator:
         transactions = []
         failures = []
 
+        all_categories = [
+            FailureReason.BANK_DECLINED,
+            FailureReason.INSUFFICIENT_FUNDS,
+            FailureReason.NETWORK_ERROR,
+            FailureReason.AUTHENTICATION_FAILED,
+            FailureReason.USER_DROPOFF,
+            FailureReason.LIMIT_EXCEEDED,
+            FailureReason.EXPIRED_CARD,
+        ]
+
         failure_reasons = [
-            (FailureReason.BANK_DECLINED, 0.30),
-            (FailureReason.INSUFFICIENT_FUNDS, 0.25),
-            (FailureReason.NETWORK_ERROR, 0.20),
+            (FailureReason.BANK_DECLINED, 0.25),
+            (FailureReason.INSUFFICIENT_FUNDS, 0.22),
+            (FailureReason.NETWORK_ERROR, 0.18),
             (FailureReason.AUTHENTICATION_FAILED, 0.12),
-            (FailureReason.USER_DROPOFF, 0.08),
-            (FailureReason.EXPIRED_CARD, 0.05),
+            (FailureReason.USER_DROPOFF, 0.09),
+            (FailureReason.LIMIT_EXCEEDED, 0.08),
+            (FailureReason.EXPIRED_CARD, 0.06),
         ]
 
         now = datetime.utcnow()
         rzp_client = RazorpayClient()
+        # Guarantee balanced representation: each of the 7 core categories is generated at least 4 times
+        guaranteed_queue = list(all_categories) * 4
+        random.shuffle(guaranteed_queue)
 
         for idx in range(total_count):
             customer = random.choice(customers)
@@ -195,14 +209,26 @@ class SyntheticDataGenerator:
             transactions.append(tx)
 
             if is_failed:
-                r = random.random()
-                cum = 0.0
-                reason = FailureReason.BANK_DECLINED
-                for f_reason, weight in failure_reasons:
-                    cum += weight
-                    if r <= cum:
-                        reason = f_reason
-                        break
+                # Ensure each of the 7 core categories is represented multiple times in cohort
+                if guaranteed_queue:
+                    reason = guaranteed_queue.pop()
+                else:
+                    r = random.random()
+                    cum = 0.0
+                    reason = FailureReason.BANK_DECLINED
+                    for f_reason, weight in failure_reasons:
+                        cum += weight
+                        if r <= cum:
+                            reason = f_reason
+                            break
+
+                # Calibrate amount for LIMIT_EXCEEDED to ensure both recoverable transactions (<₹25k) and policy escalation cases (>₹25k) exist
+                if reason == FailureReason.LIMIT_EXCEEDED:
+                    if random.random() < 0.75:
+                        tx.amount = round(random.uniform(1499.0, 9500.0), 2)
+                    else:
+                        tx.amount = round(random.uniform(28000.0, 48000.0), 2)
+
 
                 failure = PaymentFailure(
                     id=f"fail_{uuid.uuid4().hex[:14]}",
