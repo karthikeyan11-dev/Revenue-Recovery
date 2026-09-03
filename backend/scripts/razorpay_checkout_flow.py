@@ -113,8 +113,7 @@ def main():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
-    # Seed ChromaDB Playbook with initial precedents
-    RecoveryPlaybookService.reset_playbook()
+    # Ensure foundational precedents exist
     for i in range(6):
         RecoveryPlaybookService.insert_resolved_case(
             case_id=f"seed_precedent_{i}",

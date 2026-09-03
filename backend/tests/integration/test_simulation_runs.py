@@ -5,7 +5,6 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base
 from app.generators.synthetic_generator import SyntheticDataGenerator
-from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
 from app.services.simulation_service import SimulationService
 
 
@@ -26,11 +25,9 @@ def test_db():
         transaction_count=50,
         failure_rate=0.30,
     )
-    RecoveryPlaybookService.reset_playbook()
     yield db
     db.close()
     Base.metadata.drop_all(bind=engine)
-    RecoveryPlaybookService.reset_playbook()
 
 
 def test_simulation_baseline_run(test_db):

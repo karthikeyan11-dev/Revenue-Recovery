@@ -8,15 +8,15 @@ class PaymentSimulator:
     Simulates payment retry outcomes based on failure reason and delay.
     """
 
-    # Base recovery probabilities by failure category when retried smartly
+    # Realistic base recovery probabilities for blind payment gateway retries
     BASE_PROBABILITIES = {
-        FailureReason.NETWORK_ERROR: 0.85,
-        FailureReason.INSUFFICIENT_FUNDS: 0.65,
-        FailureReason.BANK_DECLINED: 0.50,
-        FailureReason.AUTHENTICATION_FAILED: 0.45,
-        FailureReason.LIMIT_EXCEEDED: 0.40,
-        FailureReason.EXPIRED_CARD: 0.05,  # Needs new card/link, hard failure
-        FailureReason.USER_DROPOFF: 0.70,
+        FailureReason.NETWORK_ERROR: 0.85,  # Transient gateway timeout / connection drop
+        FailureReason.INSUFFICIENT_FUNDS: 0.25,  # Needs delayed window or alternate rail
+        FailureReason.BANK_DECLINED: 0.10,  # Issuer decline: blind retry rarely works, needs alternate rail
+        FailureReason.AUTHENTICATION_FAILED: 0.05,  # 3DS / OTP failed: blind retry cannot authenticate
+        FailureReason.LIMIT_EXCEEDED: 0.10,  # Card limit exceeded: requires user limit adjustment or rail switch
+        FailureReason.EXPIRED_CARD: 0.02,  # Hard card expiration: requires new payment method
+        FailureReason.USER_DROPOFF: 0.05,  # Checkout abandoned: blind retry cannot complete without user
     }
 
     @classmethod

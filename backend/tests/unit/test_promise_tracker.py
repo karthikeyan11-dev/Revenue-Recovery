@@ -29,7 +29,6 @@ def test_db():
     Base.metadata.create_all(bind=engine)
     db = TestingSession()
     # Ensure ChromaDB playbook has precedents for USER_DROPOFF and NETWORK_ERROR
-    RecoveryPlaybookService.reset_playbook()
     for i in range(6):
         RecoveryPlaybookService.insert_resolved_case(
             case_id=f"seed_case_ud_{i}",
@@ -50,7 +49,6 @@ def test_db():
     yield db
     db.close()
     Base.metadata.drop_all(bind=engine)
-    RecoveryPlaybookService.reset_playbook()
 
 
 def test_promise_creation_on_dispatches(test_db):

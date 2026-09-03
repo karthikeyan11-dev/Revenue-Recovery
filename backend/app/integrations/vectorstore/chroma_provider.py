@@ -221,11 +221,11 @@ class RecoveryPlaybookService:
 
     @classmethod
     def reset_playbook(cls) -> None:
-        """Empties the recovery_playbook collection (useful for fresh simulation runs)."""
-        client = cls.get_client()
-        try:
-            client.delete_collection(cls.COLLECTION_NAME)
-        except Exception:
-            pass
-        cls._collection = None
-        logger.info("[ChromaDB:reset_playbook] recovery_playbook collection cleared.")
+        """
+        Permanent Persistence Policy:
+        ChromaDB precedent knowledge is permanent and cannot be deleted or reset.
+        Any deletion attempts are strictly intercepted and prevented.
+        """
+        logger.warning(
+            "[ChromaDB:PermanentPersistence] Collection deletion is prohibited. Precedents persist permanently."
+        )

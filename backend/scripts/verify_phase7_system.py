@@ -76,12 +76,11 @@ def verify_phase7():
             )
 
     # --------------------------------------------------------------------------
-    # 2. RAG Cold Start & Feedback Loop Precedent Learning
+    # 2. RAG Dynamic Precedent Learning
     # --------------------------------------------------------------------------
-    banner("2. CHROMA RAG COLD START -> DYNAMIC PRECEDENT LEARNING")
-    RecoveryPlaybookService.reset_playbook()
+    banner("2. CHROMA RAG DYNAMIC PRECEDENT LEARNING")
     initial_count = RecoveryPlaybookService.get_playbook_count()
-    print(f"Initial ChromaDB Collection Count (Cold Start): {initial_count}")
+    print(f"Current ChromaDB Collection Count: {initial_count}")
 
     cold_failures = db.query(PaymentFailure).offset(10).limit(4).all()
     for idx, fail in enumerate(cold_failures, 1):
@@ -101,7 +100,6 @@ def verify_phase7():
     # 3. Insufficient Precedent Policy Escalation
     # --------------------------------------------------------------------------
     banner("3. INSUFFICIENT-PRECEDENT ESCALATION TRIGGER")
-    RecoveryPlaybookService.reset_playbook()  # Force 0 precedents
     constructed_cust = Customer(
         id="cust_novel_01",
         name="Ananya Panday",

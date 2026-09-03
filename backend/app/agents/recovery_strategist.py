@@ -117,20 +117,35 @@ class RecoveryStrategistAgent:
                 f"Checkout drop-off/friction detected ({f_reason}). Dispatched interactive recovery "
                 f"via {channel} with {incentive_percent:.0f}% completion incentive."
             )
-        elif "EXPIRED_CARD" in reason_upper or "LIMIT_EXCEEDED" in reason_upper:
+        elif "LIMIT_EXCEEDED" in reason_upper:
+            # Card limit reached: dispatch 1-Click WhatsApp link with dynamic 3% discount to encourage alternate rail (UPI)
+            action_type = (
+                ActionType.SEND_WHATSAPP
+                if "WHATSAPP" in available
+                else ActionType.SEND_PAYMENT_LINK
+            )
+            retry_delay_hours = 0
+            incentive_percent = 3.0
+            channel = "WHATSAPP" if "WHATSAPP" in available else primary_channel
+            message_tone = "EMPATHETIC"
+            base_reasoning = (
+                f"Card limit reached ({f_reason}). Dispatched alternate rail 1-click link via {channel} "
+                f"with {incentive_percent:.0f}% split-payment completion incentive to convert transaction."
+            )
+        elif "EXPIRED_CARD" in reason_upper:
             action_type = ActionType.SEND_PAYMENT_LINK
             retry_delay_hours = 0
             incentive_percent = 0.0
             channel = primary_channel
-            message_tone = "URGENT" if "EXPIRED_CARD" in reason_upper else "INFORMATIVE"
+            message_tone = "URGENT"
             if intel_output.has_alternate_rail:
                 base_reasoning = (
-                    f"Card rail constraint ({f_reason}). Customer has verified alternate rails "
+                    f"Card expired ({f_reason}). Customer has verified alternate rails "
                     f"({', '.join(intel_output.alternate_rails)}). Dispatched alternate rail payment link via {channel}."
                 )
             else:
                 base_reasoning = (
-                    f"Payment method constraint ({f_reason}). Dispatched secure alternative payment method link "
+                    f"Payment card expired ({f_reason}). Dispatched secure alternative payment method link "
                     f"via {channel}."
                 )
         elif (

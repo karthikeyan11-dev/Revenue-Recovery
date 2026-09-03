@@ -72,19 +72,60 @@ class ActionExecutor:
                 details=f"Strategy scheduled cooldown wait of {retry_delay_hours} hours.",
             )
 
-        # 1. Smart Payment Retry Dispatch
+        # 1. Smart Payment Retry Dispatch with Adaptive Fallback Cascading
         if action_type == ActionType.RETRY:
             success, message = PaymentSimulator.simulate_retry(
                 failure_reason=failure_reason,
                 attempt_number=attempt_number,
                 delay_hours=retry_delay_hours,
             )
+            if success:
+                return ExecutionResult(
+                    outcome=ActionOutcome.SUCCESS,
+                    recovered=True,
+                    recovered_amount=amount,
+                    cost=0.50,  # Estimated gateway retry API fee
+                    details=message,
+                )
+
+            # Adaptive Fallback Cascading & Whale Protection:
+            # Primary automated retry failed (e.g. network blip or card auth declined).
+            # Automatically cascade to 1-Click WhatsApp Razorpay Payment Link so customer can complete via alternate rail (UPI).
+            is_whale = amount >= 10000.0
+            fallback_discount = 3.0 if is_whale else incentive_percent
+            has_discount = fallback_discount > 0
+            coupon = IncentiveService.generate_coupon(fallback_discount) if has_discount else None
+            incentive_cost = (
+                IncentiveService.calculate_cost(amount, fallback_discount)
+                if has_discount
+                else 0.0
+            )
+
+            resp_status, cascade_msg = WhatsAppSimulator.simulate_interaction(
+                has_discount=has_discount
+            )
+            recovered = resp_status == SimulatedResponse.PAID
+
+            msg_content = (
+                f"Hi! We noticed your payment of ₹{amount:,.2f} didn't go through due to a temporary network/card issue."
+            )
+            if coupon:
+                msg_content += f" Use code {coupon} for {fallback_discount:.0f}% off to complete payment securely via UPI: https://rzp.io/l/recov"
+            else:
+                msg_content += " Click here to complete 1-click Razorpay UPI payment: https://rzp.io/l/recov"
+
             return ExecutionResult(
-                outcome=ActionOutcome.SUCCESS if success else ActionOutcome.FAILED,
-                recovered=success,
-                recovered_amount=amount if success else 0.0,
-                cost=0.50,  # Estimated gateway retry API fee
-                details=message,
+                outcome=ActionOutcome.SUCCESS if recovered else ActionOutcome.FAILED,
+                recovered=recovered,
+                recovered_amount=amount if recovered else 0.0,
+                cost=0.50 + 1.20 + (incentive_cost if recovered else 0.0),
+                details=f"{message} -> Cascaded to 1-Click WhatsApp Payment Link ({cascade_msg})",
+                communication_event_data={
+                    "channel": CommunicationChannel.WHATSAPP,
+                    "recipient": customer_contact,
+                    "message_content": msg_content,
+                    "simulated_response": resp_status,
+                },
             )
 
         # Determine target channel
