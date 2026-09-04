@@ -7,14 +7,11 @@ import {
   FlaskConical,
   Users,
   Settings,
-  ChevronDown,
-  Download,
-  PlayCircle,
 } from 'lucide-react';
 import { APP_CONSTANTS } from '../../constants/app.constants';
 import { NAV_ITEMS, ROUTES } from '../../constants/routes.constants';
 import type { RouteKey } from '../../constants/routes.constants';
-import { Button } from '../ui/button';
+import logoAlone from '../../assets/revenue-recovery-logo-alone.png';
 
 export interface DashboardLayoutProps {
   activeTab: RouteKey;
@@ -22,7 +19,6 @@ export interface DashboardLayoutProps {
   timeRange?: string;
   onTimeRangeChange?: (range: string) => void;
   children: React.ReactNode;
-  onActionClick?: () => void;
 }
 
 const ICON_MAP = {
@@ -37,30 +33,23 @@ const ICON_MAP = {
 
 const PAGE_METADATA: Record<
   RouteKey,
-  { title: string; subtitle: string; actionLabel?: string; actionIcon?: 'download' | 'play' }
+  { title: string; subtitle: string }
 > = {
   [ROUTES.DASHBOARD]: {
     title: 'Dashboard',
     subtitle: 'AI Revenue Recovery Orchestrator Overview',
-    actionLabel: APP_CONSTANTS.EXPORT_REPORT_BUTTON,
-    actionIcon: 'download',
   },
   [ROUTES.CASES]: {
     title: 'Recovery Cases',
     subtitle: 'View and manage all failed payment recovery cases',
-    actionLabel: APP_CONSTANTS.EXPORT_BUTTON,
-    actionIcon: 'download',
   },
   [ROUTES.AGENTS]: {
     title: 'Agent Activity',
     subtitle: 'Monitor live agent operations and activity across all recovery cases',
-    actionLabel: APP_CONSTANTS.EXPORT_LOGS_BUTTON,
-    actionIcon: 'download',
   },
   [ROUTES.SETTINGS]: {
     title: 'Settings & Policy Guardrails',
     subtitle: 'Configure deterministic policy rules, webhooks, and thresholds',
-    actionLabel: 'Save Preferences',
   },
 };
 
@@ -68,7 +57,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeTab,
   onTabChange,
   children,
-  onActionClick,
 }) => {
   const currentMeta = PAGE_METADATA[activeTab] || PAGE_METADATA[ROUTES.DASHBOARD];
 
@@ -81,9 +69,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           <div className="h-16 flex items-center px-5 border-b border-slate-800/80">
             <div className="flex items-center space-x-2.5">
               <img
-                src="/revenue-recovery-logo-alone.png"
+                src={logoAlone}
                 alt="Revenue Recovery Logo"
-                className="w-8 h-8 object-contain drop-shadow-md"
+                className="w-8 h-8 object-contain drop-shadow-md rounded-md"
               />
               <span className="text-base font-extrabold text-white tracking-tight">
                 {APP_CONSTANTS.BRAND_NAME}
@@ -122,34 +110,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 space-y-3 border-t border-slate-800/80">
-          {/* System Status Pill */}
-          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-            <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-semibold text-slate-200">System Status</span>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-0.5 ml-4">
-              {APP_CONSTANTS.SYSTEM_STATUS}
-            </p>
-          </div>
-
-          {/* User Profile */}
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-full bg-brand-600/90 border border-brand-500/30 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                {APP_CONSTANTS.USER_INITIALS}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-slate-200 leading-tight">
-                  {APP_CONSTANTS.USER_NAME}
-                </span>
-                <span className="text-[11px] text-slate-400 leading-tight">
-                  {APP_CONSTANTS.USER_ROLE}
-                </span>
-              </div>
-            </div>
-            <ChevronDown className="w-4 h-4 text-slate-400" />
+        <div className="p-4 border-t border-slate-800/80">
+          <div className="flex items-center justify-between px-2 text-[11px] text-slate-500 font-medium">
+            <span>Razorpay Buildathon</span>
+            <span className="font-mono text-[10px] bg-slate-800/80 text-slate-400 px-1.5 py-0.5 rounded">
+              v1.0
+            </span>
           </div>
         </div>
       </aside>
@@ -176,20 +142,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 100 Transactions (Active Cohort)
               </span>
             </div>
-
-            {/* Action Button */}
-            {currentMeta.actionLabel && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onActionClick}
-                className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm text-xs font-medium flex items-center space-x-1.5 h-9 px-3.5"
-              >
-                {currentMeta.actionIcon === 'download' && <Download className="w-3.5 h-3.5 text-slate-500" />}
-                {currentMeta.actionIcon === 'play' && <PlayCircle className="w-3.5 h-3.5 text-blue-600" />}
-                <span>{currentMeta.actionLabel}</span>
-              </Button>
-            )}
           </div>
         </header>
 

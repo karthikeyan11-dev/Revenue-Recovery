@@ -1,4 +1,5 @@
 import logging
+import re
 import uuid
 from datetime import datetime, timedelta
 
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.agents.graph import RecoveryAgentState, recovery_graph
 from app.agents.recovery_analyst import RecoveryAnalystAgent
+from app.integrations.vectorstore.chroma_provider import RecoveryPlaybookService
 from app.models.audit_log import AuditLog
 from app.models.communication_event import CommunicationEvent
 from app.models.payment_failure import PaymentFailure
@@ -23,6 +25,7 @@ from app.schemas.recovery import (
     CaseTimelineItem,
     RecoveryCaseDetail,
     RecoveryCaseSummary,
+    RecoveryPrecedentItem,
 )
 
 logger = logging.getLogger("app.services.recovery_orchestrator")
@@ -40,6 +43,7 @@ class RecoveryOrchestratorService:
         offset: int = 0,
         status: CaseStatus | None = None,
         priority: str | None = None,
+        reason: str | None = None,
         search: str | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
@@ -49,6 +53,7 @@ class RecoveryOrchestratorService:
             offset=offset,
             status=status,
             priority=priority,
+            reason=reason,
             search=search,
             date_from=date_from,
             date_to=date_to,
@@ -189,13 +194,33 @@ class RecoveryOrchestratorService:
             for a in case.recovery_actions
         ]
 
+        canonical_order = {
+            "LEAK_DETECTION": 1,
+            "PROFILE_ANALYSIS": 2,
+            "STRATEGY_PROPOSAL": 3,
+            "POLICY_GATE": 4,
+            "DISPATCH_OUTCOME": 5,
+            "PLAYBOOK_LEARNING_WRITEBACK": 6,
+        }
+        sorted_logs = sorted(
+            case.audit_logs,
+            key=lambda l: (
+                canonical_order.get(l.step_name, 99),
+                l.timestamp or datetime.min,
+            ),
+        )
+
         timeline = [
             CaseTimelineItem(
                 id=log.id,
                 agent=log.agent,
                 step_name=log.step_name,
                 input_summary=log.input_summary,
-                output_summary=log.output_summary,
+                output_summary=re.sub(
+                    r"\((\d+)/(\d+)\s+attempts\)",
+                    r"(\1 successful / \2 lifetime transactions)",
+                    log.output_summary,
+                ),
                 decision=log.decision,
                 confidence=log.confidence,
                 empirical_confidence=(
@@ -207,7 +232,7 @@ class RecoveryOrchestratorService:
                 precedent_sample_size=log.precedent_sample_size or 0,
                 timestamp=log.timestamp,
             )
-            for log in case.audit_logs
+            for log in sorted_logs
         ]
 
         strat_log = next(
@@ -308,6 +333,35 @@ class RecoveryOrchestratorService:
             else None
         )
 
+        # Real-time ChromaDB Grounded Precedent Retrieval (Dense Vector Search)
+        retrieved_precedents: list[RecoveryPrecedentItem] = []
+        if f_reason:
+            try:
+                chroma_cases = RecoveryPlaybookService.query_similar_cases(
+                    failure_reason=f_reason,
+                    leak_type=(
+                        case.revenue_leak.leak_type.value
+                        if case.revenue_leak and case.revenue_leak.leak_type
+                        else None
+                    ),
+                    k=5,
+                )
+                for c_meta in chroma_cases:
+                    retrieved_precedents.append(
+                        RecoveryPrecedentItem(
+                            case_id=str(c_meta.get("case_id", "")),
+                            failure_reason=str(c_meta.get("failure_reason", f_reason)),
+                            action_taken=str(c_meta.get("action_taken", "RETRY")),
+                            channel=str(c_meta.get("channel", "NONE")),
+                            outcome=str(c_meta.get("outcome", "UNKNOWN")),
+                            recovered_amount=float(c_meta.get("recovered_amount", 0.0)),
+                            is_recovered=bool(c_meta.get("is_recovered", False)),
+                            segment=c_meta.get("segment"),
+                        )
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to query ChromaDB precedents for case {case.id}: {e}")
+
         return RecoveryCaseDetail(
             id=case.id,
             customer_id=case.customer_id,
@@ -339,6 +393,7 @@ class RecoveryOrchestratorService:
             actions=actions,
             timeline=timeline,
             promises=promises,
+            retrieved_precedents=retrieved_precedents,
         )
 
     def process_single_failure_pipeline(
@@ -460,7 +515,7 @@ class RecoveryOrchestratorService:
                     step_name="PROFILE_ANALYSIS",
                     input_summary=f"Customer: {customer.name}, Channels: {channels_str}",
                     output_summary=(
-                        f"Reliability: {intel_out.payer_reliability_score:.1%} ({intel_out.successful_past_transactions}/{intel_out.total_past_transactions} attempts), "
+                        f"Reliability: {intel_out.payer_reliability_score:.1%} ({intel_out.successful_past_transactions} successful / {intel_out.total_past_transactions} lifetime transactions), "
                         f"Timing: {intel_out.timing_band}, Alternate Rails: {alternate_rails_str}, "
                         f"Empirical Conf: {intel_out.confidence:.4f} (n={intel_out.precedent_sample_size})"
                     ),

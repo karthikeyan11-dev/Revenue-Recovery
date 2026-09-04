@@ -142,6 +142,16 @@ export interface RecoveryCaseDetail {
     created_at: string;
     resolved_at?: string | null;
   }>;
+  retrieved_precedents?: Array<{
+    case_id: string;
+    failure_reason: string;
+    action_taken: string;
+    channel: string;
+    outcome: string;
+    recovered_amount: number;
+    is_recovered: boolean;
+    segment?: string | null;
+  }>;
 }
 
 export interface AgentActivityItem {
