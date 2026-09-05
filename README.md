@@ -77,6 +77,15 @@ The user interface consists of three focused views:
 
 ## 5. Step-by-Step Judge Run Guide
 
+> [!IMPORTANT]
+> ### ⚠️ Evaluation Disclaimer: Recommended `LLM_PROVIDER=mock` in `.env`
+> For evaluating and reviewing this repository, **`LLM_PROVIDER=mock`** is configured by default and strongly recommended in `backend/.env`.
+>
+> **Why `mock` is recommended for hackathon evaluation:**
+> 1. **Zero External API Dependency & Zero Rate Limits**: External LLM providers (OpenRouter, Gemini, OpenAI, Anthropic) are subject to upstream API quota limits, HTTP 429 rate-limiting, and network latency during concurrent judge evaluations. Using `mock` guarantees 100% reliable, zero-latency execution out-of-the-box without requiring judges to register, acquire, or fund private API keys.
+> 2. **Focus on Deterministic Architecture & Math**: The core innovation of RevRecovery lies in its **compiled LangGraph state machine, deterministic Policy Engine boundaries (max 3 retries, 10% incentive cap, ₹25k escalation gate), Bayesian Laplace reliability smoothing (`(successful + 2) / (total + 4)`), and dense ChromaDB vector RAG retrieval**. The mock provider delivers realistic, domain-calibrated contextual reasoning for each agent while allowing the entire 100-transaction simulation and full pytest test suite to execute deterministically in seconds.
+> 3. **Seamless Evaluation**: If you still wish to test live frontier models (e.g. Gemini 2.0 or Nemotron via OpenRouter), you can simply toggle `LLM_PROVIDER=openrouter` or `google` and provide your API key in `backend/.env` at any time.
+
 Follow these numbered steps to run and verify the system locally:
 
 ### Step 1: Clone Repository
@@ -92,9 +101,11 @@ cp backend/.env.example backend/.env
 ```
 
 Review `backend/.env`. Key configurations:
-- **`OPENROUTER_API_KEY`** *(Recommended)*: Powers live LLM reasoning for the Forensic Diagnostic Panel.
+- **`LLM_PROVIDER=mock`** *(Default & Strongly Recommended)*: Ensures fast, deterministic evaluation of the multi-agent pipeline and 100-case simulation without external API rate-limit bottlenecks.
+- **`OPENROUTER_API_KEY`** *(Optional)*: If you wish to test live frontier LLM reasoning, set `LLM_PROVIDER=openrouter` and supply your OpenRouter key.
 - **`RAZORPAY_KEY_ID` & `RAZORPAY_KEY_SECRET`** *(Optional)*: If provided, live test orders will be created via Razorpay API. If omitted, the system falls back to realistic synthetic identifiers.
-- **`DATABASE_URL`**: Defaults to PostgreSQL `postgresql://recovery_user:recovery_pass@localhost:5432/revenue_recovery`.
+- **`DATABASE_URL`**: Defaults to PostgreSQL `postgresql://postgres:postgres@localhost:5433/revenue_recovery`.
+
 
 ### Step 3: Launch with Docker Compose
 ```bash
