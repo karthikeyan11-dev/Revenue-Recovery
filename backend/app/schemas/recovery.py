@@ -58,10 +58,22 @@ class RecoveryCaseSummary(BaseModel):
     resolved_at: datetime | None = None
 
 
+class RecoveryPrecedentItem(BaseModel):
+    case_id: str
+    failure_reason: str
+    action_taken: str
+    channel: str = "NONE"
+    outcome: str
+    recovered_amount: float = 0.0
+    is_recovered: bool = False
+    segment: str | None = None
+
+
 class RecoveryCaseDetail(RecoveryCaseSummary):
     actions: list[CaseActionItem] = []
     timeline: list[CaseTimelineItem] = []
     promises: list[PromiseToPaySummary] = []
+    retrieved_precedents: list[RecoveryPrecedentItem] = []
 
 
 class CasesListResponse(BaseModel):

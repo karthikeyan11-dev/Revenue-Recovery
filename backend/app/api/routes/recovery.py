@@ -34,6 +34,9 @@ def list_cases(
         None, alias="status", description="Filter by case status"
     ),
     priority: str | None = Query(None, description="Filter by priority (HIGH, MEDIUM, LOW)"),
+    reason: str | None = Query(
+        None, description="Filter by payment failure reason (e.g. INSUFFICIENT_FUNDS, USER_DROPOFF)"
+    ),
     search: str | None = Query(None, description="Search by Case ID, Customer name, or email"),
     date_from: datetime | None = Query(
         None, description="Filter cases created on or after this timestamp"
@@ -51,6 +54,7 @@ def list_cases(
         offset=offset,
         status=status_filter,
         priority=priority,
+        reason=reason,
         search=search,
         date_from=date_from,
         date_to=date_to,

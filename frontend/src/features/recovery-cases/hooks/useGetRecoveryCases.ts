@@ -15,6 +15,7 @@ export function useGetRecoveryCases(
         search: filters.search || undefined,
         status: filters.status !== 'all' ? filters.status : undefined,
         priority: filters.priority !== 'all' ? filters.priority : undefined,
+        reason: filters.reason !== 'all' ? filters.reason : undefined,
         limit: pageSize,
         offset: (page - 1) * pageSize,
       }),

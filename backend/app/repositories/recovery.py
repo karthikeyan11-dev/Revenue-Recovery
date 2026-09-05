@@ -130,6 +130,7 @@ class RecoveryRepository(BaseRepository[RecoveryCase]):
         offset: int = 0,
         status: CaseStatus | None = None,
         priority: str | None = None,
+        reason: str | None = None,
         search: str | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
@@ -138,6 +139,7 @@ class RecoveryRepository(BaseRepository[RecoveryCase]):
             self.db.query(RecoveryCase)
             .join(Customer, RecoveryCase.customer_id == Customer.id)
             .join(RevenueLeak, RecoveryCase.leak_id == RevenueLeak.id)
+            .join(PaymentFailure, RevenueLeak.failure_id == PaymentFailure.id)
             .options(
                 joinedload(RecoveryCase.customer),
                 joinedload(RecoveryCase.revenue_leak),
@@ -150,6 +152,14 @@ class RecoveryRepository(BaseRepository[RecoveryCase]):
 
         if status:
             query = query.filter(RecoveryCase.status == status)
+
+        if reason and reason.strip().lower() != "all":
+            r_clean = reason.strip().upper()
+            try:
+                fr_enum = FailureReason(r_clean)
+                query = query.filter(PaymentFailure.failure_reason == fr_enum)
+            except ValueError:
+                query = query.filter(PaymentFailure.failure_reason == r_clean)
 
         if search:
             s = f"%{search.strip()}%"

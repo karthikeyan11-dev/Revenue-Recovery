@@ -28,10 +28,11 @@ export const RECOVERY_CASES_CONSTANTS = {
     { value: 'all', label: 'All Failure Reasons' },
     { value: 'INSUFFICIENT_FUNDS', label: 'Insufficient Funds' },
     { value: 'NETWORK_ERROR', label: 'Network Error' },
-    { value: 'CARD_EXPIRED', label: 'Card Expired' },
+    { value: 'EXPIRED_CARD', label: 'Expired Card' },
     { value: 'BANK_DECLINED', label: 'Bank Declined' },
     { value: 'AUTHENTICATION_FAILED', label: 'Auth Failed' },
     { value: 'USER_DROPOFF', label: 'User Dropoff' },
+    { value: 'LIMIT_EXCEEDED', label: 'Limit Exceeded' },
   ],
 
 
@@ -60,6 +61,7 @@ export const RECOVERY_CASES_CONSTANTS = {
     OVERVIEW_TAB: 'Case Overview',
     TIMELINE_TAB: 'Agent Timeline',
     ACTIONS_TAB: 'Actions & Outcomes',
+    PRECEDENTS_TAB: 'RAG Precedents (ChromaDB)',
     CUSTOMER_INFO: 'Customer Information',
     FINANCIAL_INFO: 'Financial Summary',
     CLOSE_BUTTON: 'Close',

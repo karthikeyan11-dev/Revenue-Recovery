@@ -62,6 +62,7 @@ export const apiClient = {
     status?: string;
     segment?: string;
     priority?: string;
+    reason?: string;
     search?: string;
     date_from?: string;
     date_to?: string;
@@ -72,6 +73,7 @@ export const apiClient = {
     if (params?.status && params.status !== 'all') query.set('status', params.status);
     if (params?.segment && params.segment !== 'all') query.set('segment', params.segment);
     if (params?.priority && params.priority !== 'all') query.set('priority', params.priority);
+    if (params?.reason && params.reason !== 'all') query.set('reason', params.reason);
     if (params?.search) query.set('search', params.search);
     if (params?.date_from) query.set('date_from', params.date_from);
     if (params?.date_to) query.set('date_to', params.date_to);
