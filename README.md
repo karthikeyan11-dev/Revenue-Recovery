@@ -4,9 +4,11 @@
 [![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 [![React + Vite](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61dafb.svg)](https://vitejs.dev/)
 [![Docker Compose](https://img.shields.io/badge/docker-compose-2496ed.svg)](https://www.docker.com/)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-black.svg?logo=github)](https://github.com/karthikeyan11-dev/Revenue-Recovery.git)
 
 > **Razorpay AI Buildathon — Track 03: AI Revenue Recovery**  
-> An autonomous, policy-governed AI orchestration engine that identifies failed payments and checkout drop-offs, synthesizes payment-native customer signals, executes bounded multi-rail recovery, and benchmarks recovered revenue against a naive baseline in real time.
+> An autonomous, policy-governed AI orchestration engine that identifies failed payments and checkout drop-offs, synthesizes payment-native customer signals, executes bounded multi-rail recovery, and benchmarks recovered revenue against a naive baseline in real time.  
+> **Repository:** [https://github.com/karthikeyan11-dev/Revenue-Recovery.git](https://github.com/karthikeyan11-dev/Revenue-Recovery.git)
 
 ---
 
@@ -25,7 +27,7 @@ AI Reasoning (LLM)  ──▶  Deterministic Policy Guardrail  ──▶  Bounde
 
 ![System Architecture](docs/architecture.png)
 
-### The 5-Stage Orchestration Pipeline (Compiled LangGraph)
+### The 6-Stage Orchestration Pipeline (Compiled LangGraph)
 
 1. **Revenue Detective**: Analyzes failed payment telemetry (error codes, failure step, payment method) and computes a baseline recoverability score.
 2. **Customer Intelligence**: Synthesizes payment-native behavioral context:
@@ -64,11 +66,11 @@ The user interface consists of three focused views:
 1. **Executive Dashboard (`/`)**:
    - **8 Separated KPI Cards**: Financial metrics (AI Gross Recovered, Baseline Recovered, Recovery Rate, Net ROI) and Case Resolution metrics (AI Cases Rescued, Baseline Cases Rescued, Case Win Rate, Net Case Uplift) with explicit difference badges.
    - **Category Breakdown Chart**: Visualizes At-Risk, Baseline, and AI recovery across 7 failure reasons. Clearly distinguishes automated recoveries from revenue safely held in the Human Escalation Queue.
-   - **Floating Diagnostic Intelligence Panel**: Draggable, interactive widget that alerts upon run completion and opens a live LLM-generated forensic diagnosis citing exact database numbers with honest model attribution.
+   - **Floating Diagnostic Intelligence Panel**: Draggable, interactive widget that alerts upon cohort run completion. When configured with an external LLM API key, it generates a live natural-language forensic diagnosis citing exact database numbers with transparent model attribution; in default mock mode or without an external key, it honestly displays verified PostgreSQL telemetry without fabricating ungrounded model output.
 2. **Recovery Cases (`/cases`)**:
    - Searchable, filterable ledger of every failure case.
    - Visual indicators for Precedent Sufficiency, Promise-to-Pay status, and Policy decisions.
-   - Slide-over drawer detailing the complete 5-stage agent audit trace for any transaction.
+   - Slide-over drawer detailing the complete 6-stage agent audit trace for any transaction.
 3. **Agent Activity Feed (`/activity`)**:
    - Live-refreshing telemetry stream showing agent execution steps.
    - Dual confidence gauges displaying both empirical statistical confidence (Laplace smoothing over past trials) and LLM self-stated confidence.
@@ -78,19 +80,20 @@ The user interface consists of three focused views:
 ## 5. Step-by-Step Judge Run Guide
 
 > [!IMPORTANT]
-> ### ⚠️ Evaluation Disclaimer: Recommended `LLM_PROVIDER=mock` in `.env`
-> For evaluating and reviewing this repository, **`LLM_PROVIDER=mock`** is configured by default and strongly recommended in `backend/.env`.
+> ### ⚠️ Evaluation Disclaimer: Zero-Credential Default (`LLM_PROVIDER=mock`)
+> For evaluating and reviewing this repository, **`LLM_PROVIDER=mock`** is the zero-credential default path configured in `backend/.env`.
 >
-> **Why `mock` is recommended for hackathon evaluation:**
-> 1. **Zero External API Dependency & Zero Rate Limits**: External LLM providers (OpenRouter, Gemini, OpenAI, Anthropic) are subject to upstream API quota limits, HTTP 429 rate-limiting, and network latency during concurrent judge evaluations. Using `mock` guarantees 100% reliable, zero-latency execution out-of-the-box without requiring judges to register, acquire, or fund private API keys.
-> 2. **Focus on Deterministic Architecture & Math**: The core innovation of RevRecovery lies in its **compiled LangGraph state machine, deterministic Policy Engine boundaries (max 3 retries, 10% incentive cap, ₹25k escalation gate), Bayesian Laplace reliability smoothing (`(successful + 2) / (total + 4)`), and dense ChromaDB vector RAG retrieval**. The mock provider delivers realistic, domain-calibrated contextual reasoning for each agent while allowing the entire 100-transaction simulation and full pytest test suite to execute deterministically in seconds.
-> 3. **Seamless Evaluation**: If you still wish to test live frontier models (e.g. Gemini 2.0 or Nemotron via OpenRouter), you can simply toggle `LLM_PROVIDER=openrouter` or `google` and provide your API key in `backend/.env` at any time.
+> **Why `mock` is the recommended default setup for hackathon evaluation:**
+> 1. **Zero External API Dependency & Zero Rate Limits**: External LLM providers (OpenRouter, Gemini, OpenAI, Anthropic) are subject to upstream API quota limits, HTTP 429 rate-limiting, and network latency during concurrent evaluations. Mock mode guarantees 100% reliable, zero-latency execution out-of-the-box without requiring judges to register, acquire, or fund private API keys.
+> 2. **Focus on Deterministic Architecture & Math**: The core innovation of RevRecovery lies in its **compiled LangGraph state machine, deterministic Policy Engine boundaries (max 3 retries, 10% incentive cap, ₹25k escalation gate), Bayesian Laplace reliability smoothing (`(successful + 2) / (total + 4)`), and dense ChromaDB vector RAG retrieval**. The mock provider executes deterministically in seconds.
+> 3. **Diagnostic Panel Fallback vs. Real LLM Inspection**: In default mock mode (without external API credentials), the Forensic Diagnostic Panel honestly displays its built-in fallback state (*"Live LLM reasoning temporarily unavailable. Telemetry below is computed directly from live PostgreSQL state"*) rather than pretending that mock data was produced by a real frontier model.
+> 4. **Testing Real LLM Reasoning**: Judges who wish to inspect live frontier LLM reasoning and observe real model attribution tags (e.g., `minimax/minimax-m3:free (OpenRouter)`) can set `LLM_PROVIDER=openrouter` and supply their `OPENROUTER_API_KEY` in `backend/.env`.
 
 Follow these numbered steps to run and verify the system locally:
 
 ### Step 1: Clone Repository
 ```bash
-git clone https://github.com/your-username/Revenue-Recovery.git
+git clone https://github.com/karthikeyan11-dev/Revenue-Recovery.git
 cd Revenue-Recovery
 ```
 
@@ -101,24 +104,38 @@ cp backend/.env.example backend/.env
 ```
 
 Review `backend/.env`. Key configurations:
-- **`LLM_PROVIDER=mock`** *(Default & Strongly Recommended)*: Ensures fast, deterministic evaluation of the multi-agent pipeline and 100-case simulation without external API rate-limit bottlenecks.
-- **`OPENROUTER_API_KEY`** *(Optional)*: If you wish to test live frontier LLM reasoning, set `LLM_PROVIDER=openrouter` and supply your OpenRouter key.
+- **`LLM_PROVIDER=mock`** *(Default & Strongly Recommended)*: Zero-credential path for fast, deterministic evaluation of the multi-agent pipeline and 100-case simulation without external API rate-limit bottlenecks.
+- **`OPENROUTER_API_KEY`** *(Optional)*: Required only if you want to inspect live frontier model reasoning and transparent model attribution in the Forensic Panel. If omitted or kept as mock, the application operates in zero-credential mode and displays verified database telemetry.
 - **`RAZORPAY_KEY_ID` & `RAZORPAY_KEY_SECRET`** *(Optional)*: If provided, live test orders will be created via Razorpay API. If omitted, the system falls back to realistic synthetic identifiers.
 - **`DATABASE_URL`**: Defaults to PostgreSQL `postgresql://postgres:postgres@localhost:5433/revenue_recovery`.
 
 
-### Step 3: Launch with Docker Compose
+### Step 3: Launch Application
+
+#### Method 1: Docker Compose (Standard Evaluation)
 ```bash
 docker compose up -d --build
 ```
 *Wait ~20 seconds for PostgreSQL and migrations to complete.*
 
-Open your browser:
-- **Frontend Dashboard:** [http://localhost:3000](http://localhost:3000) (or [http://localhost:5173](http://localhost:5173))
+Then access:
+- **Frontend Dashboard (Docker):** [http://localhost:3000](http://localhost:3000)
 - **Interactive Backend API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 - **API Health Check:** [http://localhost:8000/health](http://localhost:8000/health)
 
-*(Alternatively, run locally: `uvicorn app.main:app --reload --port 8000` in `backend` and `pnpm dev` in `frontend`.)*
+#### Method 2: Local Development (Without Docker)
+1. Ensure PostgreSQL is running (default port `5433`).
+2. Run backend:
+   ```bash
+   cd backend && ./venv/bin/uvicorn app.main:app --reload --port 8000
+   ```
+3. Run frontend development server:
+   ```bash
+   cd frontend && npm run dev
+   ```
+Then access:
+- **Frontend Dashboard (Local Dev):** [http://localhost:5173](http://localhost:5173)
+- **Interactive Backend API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ### Step 4: Execute the Benchmark Flow
 1. Navigate to the **Dashboard** in your browser.
@@ -128,8 +145,10 @@ Open your browser:
 
 ### Step 5: Where to Look & How to Verify
 - **Inspect KPIs**: Check the 8 KPI cards. Observe the exact differences in Gross Revenue and Customer Accounts Saved.
-- **Open Forensic Diagnostic Panel**: Click the floating circular intelligence icon at the bottom right. Review the live LLM synthesis explaining why the AI won or why high-value cases were routed to human review.
-- **Verify Live LLM Attribution**: Notice the transparent model attribution tag (e.g. `minimax/minimax-m3:free via OpenRouter`). Click **Regenerate** to observe fresh live reasoning generated with streaming latency.
+- **Open Forensic Diagnostic Panel**: Click the floating circular intelligence icon at the bottom right to review cohort recovery diagnostics and financial metrics computed directly from PostgreSQL.
+- **Verify Diagnostic State & Model Attribution**:
+  - *Default Mock Mode (Zero Credentials):* The panel honestly displays the verified telemetry fallback banner (*"Live LLM reasoning temporarily unavailable. Telemetry below is computed directly from live PostgreSQL state"*), confirming that the system does not fabricate artificial model attribution without real credentials.
+  - *Real LLM Mode (with `OPENROUTER_API_KEY`):* The panel generates live natural-language synthesis and displays the verified model attribution tag (e.g., `minimax/minimax-m3:free (OpenRouter)`). Click **Regenerate** to observe live streaming generation.
 - **Inspect Audit Timeline**: Navigate to **Recovery Cases** and click on any case row to inspect the full LangGraph state transition.
 - **Verify Numbers are Real**: Re-run the simulation (click Generate $\to$ Run Baseline $\to$ Run AI). All metrics, percentages, and case counts will recompute dynamically based on live database state.
 
@@ -142,7 +161,7 @@ In the spirit of technical honesty, here are known boundaries of the current imp
 1. **Payment Gateway Scope**: Razorpay Test API integration is active for order creation (`/v1/orders`) and webhook verification (`/webhooks/razorpay`). Live bank settlement and card capture simulation rely on Razorpay test mode VPAs and calibrated simulators.
 2. **WhatsApp Channel Execution**: Customer WhatsApp interactions are simulated via a calibrated response engine modeled after Indian UPI intent conversion rates (72% with incentive, 55% standard) rather than a live Meta Business API account.
 3. **Escalated Case Settlement**: Transactions held in the Human Escalation Queue are accounted as ₹0.00 automated recovery until manually resolved by support operators in the dashboard.
-4. **LLM Provider Availability**: When external LLM APIs experience upstream rate limits, the diagnostic panel cleanly falls back to verified PostgreSQL telemetry rather than fabricating mock reasoning.
+4. **LLM Provider & Diagnostic Panel Mode**: Mock mode is the default zero-credential path. Without an active `OPENROUTER_API_KEY`, or when external APIs experience upstream rate limits, the diagnostic panel cleanly displays the verified PostgreSQL telemetry fallback state rather than fabricating ungrounded reasoning or claiming that a real model was called.
 
 ---
 
@@ -161,5 +180,5 @@ cd backend && ./venv/bin/pytest -v
 ./venv/bin/python scripts/trace_promise_tracker.py
 
 # Build frontend production bundle
-cd ../frontend && pnpm build
+cd ../frontend && npm run build
 ```
